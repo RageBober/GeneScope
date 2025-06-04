@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Виртуальные окружения
+.venv/
+venv/
+myenv/
+
+# IDE и система
+.idea/
+.vscode/
+
+# Кеши/отчёты
+.coverage
+*.db
+*.sqlite
+*.log
+.ruff_cache/
+.mypy_cache/
+junit.xml
+
+# Тестовые/временные файлы
+temp_gff_db.db
+
+*.zip
+
+
+
+
+
+__pycache__/
+
+
+

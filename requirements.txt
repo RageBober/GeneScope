@@ -1,0 +1,12 @@
+biopython
+cyvcf2
+numpy
+pandas
+pytest>=8.2
+pytest-cov>=5.0
+pysam
+requests
+scikit-learn
+openpyxl
+h5py
+gffutils
