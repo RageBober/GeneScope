@@ -1,5 +1,6 @@
 # filter_ngs.py
 
+import numpy as np
 import pandas as pd
 
 
@@ -92,17 +93,13 @@ def filter_by_mapping(
     return df_filtered
 
 
-def remove_pcr_duplicates(
-    df, chr_col="chr", start_col="start", end_col="end", strand_col="strand"
-):
+def remove_pcr_duplicates(df, chr_col="chr", start_col="start", end_col="end", strand_col="strand"):
     """
     Удаляем PCR-дубликаты по наивному критерию:
       (chr, start, end, strand) – уникальный "ключ". Все риды с одинаковым ключом, кроме первого, удаляем.
     """
     # строим tuple-ключ
-    keys = (
-        df[[chr_col, start_col, end_col, strand_col]].astype(str).apply(tuple, axis=1)
-    )
+    keys = df[[chr_col, start_col, end_col, strand_col]].astype(str).apply(tuple, axis=1)
     seen = set()
     to_keep = []
 
@@ -135,14 +132,3 @@ def filter_by_gc_content(df, seq_column="sequence", min_gc=0.0, max_gc=1.0):
 
     mask = df[seq_column].apply(check_gc)
     return df[mask]
-
-
-def filter_ngs(df, min_reads=10, column="READS"):
-    """
-    Фильтрует строки по количеству ридов (например, для NGS).
-    Оставляет только строки, где column >= min_reads.
-    """
-    if column not in df.columns:
-        print(f"[filter_ngs] Колонка '{column}' не найдена, пропускаем фильтр.")
-        return df
-    return df[df[column] >= min_reads]
