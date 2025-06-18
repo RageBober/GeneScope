@@ -1,10 +1,11 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
-import pandas as pd
 import types
+from tkinter import filedialog, messagebox, ttk
 
+import pandas as pd
+
+from data_analysis.data_cleaning import handle_missing_values, remove_duplicates
 from data_analysis.data_ingestion import load_data
-from data_analysis.data_cleaning import remove_duplicates, handle_missing_values
 
 
 class ProgressWindow:
@@ -32,9 +33,7 @@ class ProgressWindow:
         self.label = ttk.Label(self.root, text="Прогресс: 0%")
         self.label.pack(pady=10)
 
-        self.progressbar = ttk.Progressbar(
-            self.root, maximum=100, length=300, mode="determinate"
-        )
+        self.progressbar = ttk.Progressbar(self.root, maximum=100, length=300, mode="determinate")
         self.progressbar.pack(pady=10)
         self.root.update()
 
@@ -121,9 +120,9 @@ class GenoScopeApp:
             width=15,
             state="readonly",
         ).grid(row=0, column=1, padx=4)
-        tk.Button(
-            miss_frame, text="Заполнить пропуски", command=self._fill_missing
-        ).grid(row=0, column=2, padx=4)
+        tk.Button(miss_frame, text="Заполнить пропуски", command=self._fill_missing).grid(
+            row=0, column=2, padx=4
+        )
 
         # Поле вывода
         self.output = tk.Text(self.root, height=20, width=100)
@@ -203,9 +202,7 @@ class GenoScopeApp:
             progress.update()
 
         progress.close()
-        self.output.insert(
-            tk.END, f"Обработка чанков завершена. Всего чанков: {chunk_num}\n"
-        )
+        self.output.insert(tk.END, f"Обработка чанков завершена. Всего чанков: {chunk_num}\n")
 
     def _remove_duplicates(self, df):
         subset = [s.strip() for s in self.subset_entry.get().split(",") if s.strip()]

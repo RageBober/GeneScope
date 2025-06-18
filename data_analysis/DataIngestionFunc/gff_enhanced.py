@@ -1,6 +1,7 @@
 #
-import os
 import json
+import os
+
 import gffutils
 import pandas as pd
 
@@ -33,12 +34,7 @@ def validate_gff_file(file_path, lines_to_check=10):
 
 
 def load_gff_advanced(
-    file_path,
-    dbfn=":memory:",
-    force=True,
-    filter_types=None,
-    parse_attrs=False,
-    disk_mode=False,
+    file_path, dbfn=":memory:", force=True, filter_types=None, parse_attrs=False, disk_mode=False
 ):
     """
     Расширенная версия загрузки GFF с дополнительными функциями:
@@ -141,17 +137,7 @@ def chunk_read_gff(file_path, chunk_size=200000, filter_types=None):
     """
     # Структура GFF (9 полей): seqid, source, type, start, end, score, strand, phase, attributes
     # Упрощённая реализация
-    columns = [
-        "seqid",
-        "source",
-        "type",
-        "start",
-        "end",
-        "score",
-        "strand",
-        "phase",
-        "attributes",
-    ]
+    columns = ["seqid", "source", "type", "start", "end", "score", "strand", "phase", "attributes"]
     buffer = []
     count = 0
     with open(file_path, "r") as f:
@@ -187,7 +173,5 @@ def chunk_read_gff(file_path, chunk_size=200000, filter_types=None):
         df_chunk = pd.DataFrame(buffer, columns=columns)
         df_chunk["start"] = df_chunk["start"].astype(int, errors="ignore")
         df_chunk["end"] = df_chunk["end"].astype(int, errors="ignore")
-        df_chunk["score"] = df_chunk["score"].apply(
-            lambda x: float(x) if x != "." else None
-        )
+        df_chunk["score"] = df_chunk["score"].apply(lambda x: float(x) if x != "." else None)
         yield df_chunk

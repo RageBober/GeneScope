@@ -1,28 +1,19 @@
 # ml_imputation.py
 import logging
+
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import LogisticRegression
 from sklearn.exceptions import NotFittedError
+from sklearn.linear_model import LogisticRegression
 
 logger = logging.getLogger(__name__)
 
 
-def fill_missing_with_ml(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+def fill_missing_with_ml(df: pd.DataFrame, columns: list) -> pd.DataFrame:
     """
-    Заполняет пропущенные значения в DataFrame с помощью машинного обучения.
-
-    Для числовых признаков используется RandomForestRegressor.
-    Для категориальных — LogisticRegression (если в столбце больше 1 класса).
-
-    Признаки с полностью пустыми столбцами или без строк без пропусков — пропускаются.
-
-    Параметры:
-        df (pd.DataFrame): Исходный DataFrame с пропусками.
-        columns (list): Список имён столбцов для заполнения пропусков.
-
-    Возвращает:
-        pd.DataFrame: Новый DataFrame с заполненными пропусками (оригинал не изменяется).
+    Заполняет пропущенные значения ML-моделью:
+    - RandomForestRegressor (числовые)
+    - LogisticRegression (категориальные)
     """
     df_copy = df.copy()
 
@@ -106,8 +97,7 @@ def fill_missing_with_ml(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
             continue
         except Exception as pred_err:
             logger.error(
-                f"[fill_missing_with_ml] Ошибка предсказания для '{col}': {pred_err}",
-                exc_info=True,
+                f"[fill_missing_with_ml] Ошибка предсказания для '{col}': {pred_err}", exc_info=True
             )
             continue
 

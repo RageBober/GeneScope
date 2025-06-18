@@ -1,5 +1,7 @@
 # filter_meta_epi.py
 
+import pandas as pd
+
 
 def filter_by_otu_coverage(df, coverage_col="OTU_COUNT", min_coverage=100):
     """
@@ -15,9 +17,7 @@ def filter_by_otu_coverage(df, coverage_col="OTU_COUNT", min_coverage=100):
     - pd.DataFrame (фильтрованный)
     """
     if coverage_col not in df.columns:
-        print(
-            f"[filter_by_otu_coverage] Колонка '{coverage_col}' не найдена, пропускаем."
-        )
+        print(f"[filter_by_otu_coverage] Колонка '{coverage_col}' не найдена, пропускаем.")
         return df
 
     return df[df[coverage_col] >= min_coverage]
@@ -69,26 +69,20 @@ def filter_by_maf_epigenetics(df, maf_col="MAF", min_maf=0.05):
     - pd.DataFrame
     """
     if maf_col not in df.columns:
-        print(
-            f"[filter_by_maf_epigenetics] Колонка '{maf_col}' не найдена, пропускаем."
-        )
+        print(f"[filter_by_maf_epigenetics] Колонка '{maf_col}' не найдена, пропускаем.")
         return df
 
     return df[df[maf_col] >= min_maf]
 
 
 def filter_by_cpg_confidence(
-    df,
-    coverage_col="CpG_COV",
-    pvalue_col="CpG_PVALUE",
-    min_coverage=10,
-    max_pvalue=0.05,
+    df, coverage_col="CpG_COV", pvalue_col="CpG_PVALUE", min_coverage=10, max_pvalue=0.05
 ):
     """
     Фильтрация CpG по «уверенности сигнала»:
     - coverage_col: минимальное покрытие CpG (min_coverage)
     - pvalue_col: например, detection p-value (если оно > max_pvalue,
-                считаем сигнал недостоверным).
+                  считаем сигнал недостоверным).
 
     Параметры:
     - df
@@ -152,9 +146,7 @@ def apply_meta_epi_filter_pipeline(df, pipeline):
                 )
             elif step_type == "maf_epigenetics":
                 df = filter_by_maf_epigenetics(
-                    df,
-                    maf_col=step.get("maf_col", "MAF"),
-                    min_maf=step.get("min_maf", 0.05),
+                    df, maf_col=step.get("maf_col", "MAF"), min_maf=step.get("min_maf", 0.05)
                 )
             elif step_type == "cpg_confidence":
                 df = filter_by_cpg_confidence(
@@ -165,37 +157,10 @@ def apply_meta_epi_filter_pipeline(df, pipeline):
                     max_pvalue=step.get("max_pvalue", 0.05),
                 )
             else:
-                print(
-                    f"[apply_meta_epi_filter_pipeline] Неизвестный тип фильтра: {step_type}"
-                )
+                print(f"[apply_meta_epi_filter_pipeline] Неизвестный тип фильтра: {step_type}")
         except Exception as e:
-            print(
-                f"[apply_meta_epi_filter_pipeline] Ошибка при шаге '{step_type}': {e}"
-            )
+            print(f"[apply_meta_epi_filter_pipeline] Ошибка при шаге '{step_type}': {e}")
             # Можно вывести traceback
             # По желанию прерывать или продолжать
 
     return df
-
-
-def filter_meta_epi(df, method="otu_coverage", **kwargs):
-    """
-    Универсальный вход для фильтров meta/epigenetics.
-    method:
-        - 'otu_coverage'
-        - 'rare_taxa'
-        - 'maf_epigenetics'
-        - 'cpg_confidence'
-    kwargs: аргументы соответствующего фильтра
-    """
-    if method == "otu_coverage":
-        return filter_by_otu_coverage(df, **kwargs)
-    elif method == "rare_taxa":
-        return filter_rare_taxa(df, **kwargs)
-    elif method == "maf_epigenetics":
-        return filter_by_maf_epigenetics(df, **kwargs)
-    elif method == "cpg_confidence":
-        return filter_by_cpg_confidence(df, **kwargs)
-    else:
-        print(f"[filter_meta_epi] Неизвестный метод: {method}")
-        return df

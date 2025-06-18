@@ -1,6 +1,7 @@
 # auto_gff_loader.py
 import os
-from .gff_enhanced import load_gff_advanced, chunk_read_gff
+
+from .gff_enhanced import chunk_read_gff, load_gff_advanced
 
 
 def auto_load_gff(
@@ -38,14 +39,10 @@ def auto_load_gff(
     if size_mb > size_threshold_mb:
         # используем чанковый режим
         print("[auto_load_gff] Файл большой, переходим к chunk_read_gff...")
-        return chunk_read_gff(
-            file_path, chunk_size=chunk_size, filter_types=filter_types
-        )
+        return chunk_read_gff(file_path, chunk_size=chunk_size, filter_types=filter_types)
     else:
         # используем load_gff_advanced
-        print(
-            "[auto_load_gff] Файл относительно небольшой, используем load_gff_advanced..."
-        )
+        print("[auto_load_gff] Файл относительно небольшой, используем load_gff_advanced...")
         df = load_gff_advanced(
             file_path,
             dbfn=dbfn,

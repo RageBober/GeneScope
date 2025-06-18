@@ -1,22 +1,17 @@
 # analysis_core.py
+import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
-from sklearn.feature_selection import SelectKBest, f_classif, VarianceThreshold
-from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from sklearn.compose import ColumnTransformer
+from sklearn.decomposition import PCA
+from sklearn.feature_selection import SelectKBest, VarianceThreshold, f_classif
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 
 
-def analyze_data(df: pd.DataFrame) -> None:
+def analyze_data(df):
     """
-    Выполняет базовый анализ данных:
-    - Выводит описательную статистику по DataFrame,
-    - Строит корреляционную матрицу.
-
-    Параметры:
-        df (pd.DataFrame): Данные для анализа.
+    Выполняет базовый анализ данных: вывод описательной статистики и построение корреляционной матрицы.
     """
     try:
         print(df.describe())
@@ -26,36 +21,24 @@ def analyze_data(df: pd.DataFrame) -> None:
         print(f"Error analyzing data: {e}")
 
 
-def generate_statistics(df: pd.DataFrame) -> dict[str, object]:
+def generate_statistics(df):
     """
-    Генерирует базовую статистику по числовым и категориальным признакам.
-
-    Параметры:
-        df (pd.DataFrame): Исходные данные.
-
-    Возвращает:
-        dict: Статистика по числовым и категориальным столбцам.
+    Генерирует базовую статистику для числовых и категориальных признаков.
     """
     stats = {}
     try:
         stats["numeric"] = df.describe().to_dict()
         categorical_cols = df.select_dtypes(include=["object", "category"]).columns
-        stats["categorical"] = {
-            col: df[col].value_counts().to_dict() for col in categorical_cols
-        }
+        stats["categorical"] = {col: df[col].value_counts().to_dict() for col in categorical_cols}
         return stats
     except Exception as e:
         print(f"Error generating statistics: {e}")
         return stats
 
 
-def correlation_analysis(df: pd.DataFrame, target_column: str) -> None:
+def correlation_analysis(df, target_column):
     """
-    Выполняет корреляционный анализ и строит тепловую карту корреляций по DataFrame.
-
-    Параметры:
-        df (pd.DataFrame): Данные для анализа.
-        target_column (str): Не используется (оставлено для совместимости).
+    Выполняет корреляционный анализ и строит корреляционную матрицу.
     """
     try:
         corr_matrix = df.corr()
@@ -67,26 +50,14 @@ def correlation_analysis(df: pd.DataFrame, target_column: str) -> None:
         print(f"Error in correlation analysis: {e}")
 
 
-def extract_pca(df: pd.DataFrame, n_components: int = 2) -> pd.DataFrame:
+def extract_pca(df, n_components=2):
     """
-    Извлекает главные компоненты (PCA) из числовых данных.
-
-    Параметры:
-        df (pd.DataFrame): Входные данные.
-        n_components (int): Количество главных компонент.
-
-    Возвращает:
-        pd.DataFrame: Главные компоненты (PC1, PC2 и т.д.)
-
-    Исключения:
-        ValueError: Если данных недостаточно для PCA.
+    Извлекает главные компоненты из числовых данных.
     """
     numeric_cols = df.select_dtypes(include=["float64", "int"]).columns
     X = df[numeric_cols]
     if X.shape[0] < n_components or X.shape[1] < n_components:
-        raise ValueError(
-            f"Недостаточно данных для извлечения {n_components} главных компонентов."
-        )
+        raise ValueError(f"Недостаточно данных для извлечения {n_components} главных компонентов.")
     pca = PCA(n_components=n_components)
     principal_components = pca.fit_transform(X)
     pc_columns = [f"PC{i+1}" for i in range(n_components)]
@@ -95,52 +66,22 @@ def extract_pca(df: pd.DataFrame, n_components: int = 2) -> pd.DataFrame:
 
 class LabelEncoderWrapper(LabelEncoder):
     """
-    Обёртка для LabelEncoder, совместимая с Pipeline.
-
-    Позволяет корректно работать с категориальными признаками в scikit-learn пайплайнах.
+    Обёртка для LabelEncoder, предназначенная для использования внутри Pipeline.
     """
 
     def fit(self, X, y=None):
-        """
-        Обучает LabelEncoder на данных X.
-        """
         return super().fit(X)
 
     def transform(self, X):
-        """
-        Преобразует категориальные признаки в числовые метки.
-
-        Возвращает:
-            np.ndarray: Массив преобразованных значений, форма (n_samples, 1)
-        """
         return super().transform(X).reshape(-1, 1)
 
     def fit_transform(self, X, y=None):
-        """
-        Обучает и преобразует данные X.
-        """
         return super().fit_transform(X).reshape(-1, 1)
 
 
-def select_features(
-    df: pd.DataFrame, target_column: str, k: int = 10, encoding_method: str = "onehot"
-) -> list[str]:
+def select_features(df, target_column, k=10, encoding_method="onehot"):
     """
-    Выбирает k лучших признаков для предсказания целевой переменной.
-
-    Использует SelectKBest (f_classif) и предварительную обработку категориальных признаков.
-
-    Параметры:
-        df (pd.DataFrame): Исходные данные.
-        target_column (str): Имя целевого столбца.
-        k (int): Количество лучших признаков.
-        encoding_method (str): Метод кодирования категориальных признаков ('onehot' или 'label').
-
-    Возвращает:
-        list: Список имён выбранных признаков.
-
-    Исключения:
-        ValueError: Если не хватает классов в целевой переменной или не поддерживается метод кодирования.
+    Выбирает k лучших признаков для целевой переменной с использованием SelectKBest.
     """
     X = df.drop(columns=[target_column])
     y = df[target_column]
@@ -153,9 +94,7 @@ def select_features(
     if encoding_method == "onehot":
         categorical_transformer = OneHotEncoder(drop="first", handle_unknown="ignore")
     elif encoding_method == "label":
-        categorical_transformer = Pipeline(
-            steps=[("label_encoder", LabelEncoderWrapper())]
-        )
+        categorical_transformer = Pipeline(steps=[("label_encoder", LabelEncoderWrapper())])
     else:
         raise ValueError("Unsupported encoding method. Choose 'onehot' or 'label'.")
     preprocessor = ColumnTransformer(
@@ -187,25 +126,9 @@ def select_features(
     return selected_features
 
 
-def get_feature_names(
-    preprocessor,
-    X: pd.DataFrame,
-    numeric_cols: list[str],
-    categorical_cols: list[str],
-    encoding_method: str,
-) -> list[str]:
+def get_feature_names(preprocessor, X, numeric_cols, categorical_cols, encoding_method):
     """
     Возвращает имена признаков после преобразования ColumnTransformer.
-
-    Параметры:
-        preprocessor (ColumnTransformer): Трансформер для обработки признаков.
-        X (pd.DataFrame): Исходные данные.
-        numeric_cols (list): Список числовых столбцов.
-        categorical_cols (list): Список категориальных столбцов.
-        encoding_method (str): Метод кодирования ('onehot' или 'label').
-
-    Возвращает:
-        list: Список имён признаков после преобразования.
     """
     feature_names = []
     try:

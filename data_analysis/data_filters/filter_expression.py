@@ -1,27 +1,25 @@
 # filter_expression.py
 
 import numpy as np
+import pandas as pd
 
 
 def filter_by_expression_level(df, column="TPM", threshold=1.0, how="above"):
     """
-    Фильтрация строк по уровню экспрессии.
-
-    Оставляет только те строки, где значение в колонке column больше/меньше порога.
+    Удаляем гены (строки), у которых средний уровень экспрессии (в колонке column)
+    ниже (или выше) заданного порога threshold.
 
     Параметры:
-        df (pd.DataFrame): Данные.
-        column (str): Столбец с уровнем экспрессии.
-        threshold (float): Порог.
-        how (str): 'above' или 'below'.
+    - df (pd.DataFrame): DataFrame, где строки — гены, столбцы — образцы (либо наоборот)
+    - column (str): название столбца, где хранится TPM / CPM
+    - threshold (float): пороговое значение
+    - how (str): 'above' (оставляем только >= threshold) или 'below' (оставляем только <= threshold)
 
     Возвращает:
-        pd.DataFrame: Отфильтрованные данные.
+    - pd.DataFrame (отфильтрованный)
     """
     if column not in df.columns:
-        print(
-            f"[filter_by_expression_level] Колонка {column} не найдена, пропускаем фильтр."
-        )
+        print(f"[filter_by_expression_level] Колонка {column} не найдена, пропускаем фильтр.")
         return df
 
     if how == "above":
@@ -41,7 +39,7 @@ def filter_by_zero_count(df, columns=None, max_zero_fraction=0.5):
     Параметры:
     - df (pd.DataFrame): строки — гены, столбцы — образцы
     - columns (list|None): список столбцов, среди которых искать нули.
-                        Если None — берём все числовые столбцы.
+                           Если None — берём все числовые столбцы.
     - max_zero_fraction (float): допустимая доля нулей
 
     Возвращает:
@@ -123,9 +121,7 @@ def filter_by_biomarker_bases(df, gene_column="gene_id", biomarker_list=None):
         return df
 
     if gene_column not in df.columns:
-        print(
-            f"[filter_by_biomarker_bases] Колонка {gene_column} не найдена, пропускаем."
-        )
+        print(f"[filter_by_biomarker_bases] Колонка {gene_column} не найдена, пропускаем.")
         return df
 
     return df[df[gene_column].isin(biomarker_list)]
@@ -136,32 +132,6 @@ def filter_by_biomarker_bases(df, gene_column="gene_id", biomarker_list=None):
 Если вы уже знаете, что переходите к pipeline/UI, в котором пользователь сам выберет «метод=AVG, threshold=1.0, require≥2 samples» – да, имеет смысл.
 
 Если всё ещё в процессе «глобальной» оптимизации (Dask/C++), можно сначала набросать методы «как есть», а потом, при необходимости, переписать на Dask."""
-
-
-def filter_expression(df, method="expression_level", **kwargs):
-    """
-    Универсальная точка входа для фильтрации по экспрессии.
-
-    method:
-        - expression_level
-        - zero_count
-        - fold_change
-        - significance
-        - biomarker
-
-    kwargs:
-        Передаются внутрь соответствующей функции
-    """
-    if method == "expression_level":
-        return filter_by_expression_level(df, **kwargs)
-    elif method == "zero_count":
-        return filter_by_zero_count(df, **kwargs)
-    elif method == "fold_change":
-        return filter_by_fold_change(df, **kwargs)
-    elif method == "significance":
-        return filter_by_significance(df, **kwargs)
-    elif method == "biomarker":
-        return filter_by_biomarker_bases(df, **kwargs)
-    else:
-        print(f"[filter_expression] Неизвестный метод: {method}")
-        return df
+def apply_expression_filters(df: pd.DataFrame, **kwargs) -> pd.DataFrame:  # если ещё нет
+    # пока просто заглушка-пасстру; расширите логику позже
+    return df

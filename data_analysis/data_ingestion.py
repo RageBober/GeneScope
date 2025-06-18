@@ -1,349 +1,283 @@
-"""
-Модуль загрузки данных GenoScope.
-Позволяет загружать данные из файлов разных форматов (CSV, Excel, JSON, FASTA, VCF, BAM, GFF, HDF5).
-"""
+# data_ingestion.py
+from __future__ import annotations
 
+import json
+import logging
 import os
+from typing import Generator, Optional, Union
+
 import pandas as pd
-from cyvcf2 import VCF
-import pysam
-import h5py
 
-# ВАЖНО: убедитесь, что DataIngestionFunc/auto_gff_loader.py
-# использует относительные импорты, если в том же пакете.
-from .DataIngestionFunc.auto_gff_loader import auto_load_gff
+logger = logging.getLogger("data_ingestion")
 
-############################
-# Существующие базовые функции
-############################
+# ──────────────────────────────────────────────────────────────
+# Soft-imports heavy deps (только warning, проект не падает)
+# ──────────────────────────────────────────────────────────────
+try:
+    from cyvcf2 import VCF           # noqa: N812  (pep-8 alias)
+except ImportError:                                      # pragma: no cover
+    VCF = None
+    logger.warning("'cyvcf2' not installed → VCF loading disabled")
+
+try:
+    import pysam
+except ImportError:                                      # pragma: no cover
+    pysam = None
+    logger.warning("'pysam' not installed → BAM loading disabled")
+
+try:
+    import gffutils
+except ImportError:                                      # pragma: no cover
+    gffutils = None
+    logger.warning("'gffutils' not installed → GFF loading disabled")
+
+try:
+    import h5py
+except ImportError:                                      # pragma: no cover
+    h5py = None
+    logger.warning("'h5py' not installed → HDF5 loading disabled")
+
+try:
+    from .DataIngestionFunc.auto_gff_loader import auto_load_gff
+except ImportError:                                      # pragma: no cover
+    auto_load_gff = None
+    logger.warning("'auto_load_gff' unavailable → GFF fallback disabled")
+
+# ──────────────────────────────────────────────────────────────
+# Helpers
+# ──────────────────────────────────────────────────────────────
+def _ensure_file(path: str) -> None:
+    """Проверяет наличие и непустоту файла; при ошибке — вызывает `SystemExit(1)`."""
+    if not os.path.exists(path):
+        logger.error("File '%s' not found", path)
+        raise SystemExit(1)
+    if os.path.getsize(path) == 0:
+        logger.error("File '%s' is empty", path)
+        raise SystemExit(1)
 
 
-def load_csv(file_path: str) -> pd.DataFrame | None:
-    """
-    Загружает данные из файла CSV в DataFrame.
-
-    Параметры:
-        file_path (str): Путь к файлу CSV.
-
-    Возвращает:
-        pd.DataFrame или None: DataFrame с данными или None при ошибке.
-    """
-    if not os.path.exists(file_path):
-        print(f"[load_csv] Error: файл '{file_path}' не существует.")
+def _return_if_not_empty(
+    df: Optional[pd.DataFrame],
+) -> Optional[pd.DataFrame]:
+    """Возврат `None`, если DataFrame пуст / None."""
+    if df is None or df.empty:
+        logger.warning("Loaded data is empty")
         return None
+    return df
 
-    if os.path.getsize(file_path) == 0:
-        print(f"[load_csv] Error: файл '{file_path}' пустой.")
-        return None
 
+# ──────────────────────────────────────────────────────────────
+# Loaders
+# ──────────────────────────────────────────────────────────────
+def load_csv(
+    path: str,
+    *,
+    chunksize: int | None = None,
+    **read_csv_kwargs,
+) -> Union[pd.DataFrame, Generator[pd.DataFrame, None, None], None]:
+    """
+    Read a **CSV** file.
+
+    Parameters
+    ----------
+    path : str
+    chunksize : int, optional
+        Stream rows by chunks (memory-friendly).
+    **read_csv_kwargs:
+        Passed straight into ``pandas.read_csv``.
+
+    Examples
+    --------
+    >>> df = load_csv("samples.csv")
+    >>> for chunk in load_csv("huge.csv", chunksize=10_000):
+    ...     print(len(chunk))
+    """
     try:
-        df = pd.read_csv(file_path)
+        _ensure_file(path)
+        if chunksize:
+            return pd.read_csv(path, chunksize=chunksize, **read_csv_kwargs)
+        df = pd.read_csv(path, **read_csv_kwargs)
+        return _return_if_not_empty(df)
     except pd.errors.EmptyDataError:
-        print(
-            f"[load_csv] Error: файл '{file_path}' не содержит данных (EmptyDataError)."
-        )
-        return None
+        logger.error("CSV '%s' contains no data (EmptyDataError)", path)
     except pd.errors.ParserError as e:
-        print(f"[load_csv] Parsing error CSV '{file_path}': {e}")
-        return None
+        logger.error("CSV parsing error '%s': %s", path, e)
     except Exception as e:
-        print(f"[load_csv] Непредвиденная ошибка чтения CSV '{file_path}': {e}")
-        return None
-
-    if df.empty:
-        print(
-            f"[load_csv] Предупреждение: файл '{file_path}' прочитан, но DataFrame пуст."
-        )
-        return None
-
-    return df
+        logger.exception("Unexpected CSV error '%s': %s", path, e)
+    return None
 
 
-def load_excel(file_path: str) -> pd.DataFrame | None:
-    """
-    Загружает данные из файла Excel (xls/xlsx) в DataFrame.
-
-    Параметры:
-        file_path (str): Путь к Excel-файлу.
-
-    Возвращает:
-        pd.DataFrame или None: DataFrame с данными или None при ошибке.
-    """
-    if not os.path.exists(file_path):
-        print(f"[load_excel] Error: файл '{file_path}' не существует.")
-        return None
-
-    if os.path.getsize(file_path) == 0:
-        print(f"[load_excel] Error: файл '{file_path}' пустой.")
-        return None
-
+def load_excel(path: str) -> Optional[pd.DataFrame]:
+    """Read **XLS/XLSX** via *pandas*."""
     try:
-        df = pd.read_excel(file_path)
-    except ValueError as e:
-        print(f"[load_excel] ValueError при чтении Excel '{file_path}': {e}")
-        return None
+        _ensure_file(path)
+        return _return_if_not_empty(pd.read_excel(path))
     except Exception as e:
-        print(f"[load_excel] Непредвиденная ошибка чтения Excel '{file_path}': {e}")
-        return None
-
-    if df.empty:
-        print(
-            f"[load_excel] Предупреждение: файл '{file_path}' прочитан, но DataFrame пуст."
-        )
-        return None
-
-    return df
+        logger.exception("Excel error '%s': %s", path, e)
+    return None
 
 
-def load_json(file_path: str) -> pd.DataFrame | None:
-    """
-    Загружает данные из файла JSON в DataFrame.
-
-    Параметры:
-        file_path (str): Путь к JSON-файлу.
-
-    Возвращает:
-        pd.DataFrame или None: DataFrame с данными или None при ошибке.
-    """
-    if not os.path.exists(file_path):
-        print(f"[load_json] Error: файл '{file_path}' не существует.")
-        return None
-
-    if os.path.getsize(file_path) == 0:
-        print(f"[load_json] Error: файл '{file_path}' пустой.")
-        return None
-
+def load_json(path: str) -> Optional[pd.DataFrame]:
+    """Read **JSON** into flattened DataFrame."""
     try:
-        df = pd.read_json(file_path)
-    except ValueError as e:
-        print(f"[load_json] Некорректный JSON в '{file_path}': {e}")
-        return None
+        _ensure_file(path)
+        with open(path, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        return _return_if_not_empty(pd.json_normalize(data))
     except Exception as e:
-        print(f"[load_json] Непредвиденная ошибка чтения JSON '{file_path}': {e}")
-        return None
-
-    if df.empty:
-        print(
-            f"[load_json] Предупреждение: JSON '{file_path}' загружен, но DataFrame пуст."
-        )
-        return None
-
-    return df
+        logger.exception("JSON error '%s': %s", path, e)
+    return None
 
 
-def load_fasta(file_path: str) -> pd.DataFrame | None:
-    """
-    Загружает последовательности из FASTA-файла в DataFrame.
-
-    Параметры:
-        file_path (str): Путь к FASTA-файлу.
-
-    Возвращает:
-        pd.DataFrame или None: DataFrame со столбцом 'sequence', либо None при ошибке.
-    """
-    if not os.path.exists(file_path):
-        print(f"[load_fasta] Error: файл '{file_path}' не существует.")
-        return None
-
-    if os.path.getsize(file_path) == 0:
-        print(f"[load_fasta] Error: файл '{file_path}' пустой.")
-        return None
-
-    sequences = []
+def load_fasta(path: str) -> Optional[pd.DataFrame]:
+    """Read **FASTA** → DataFrame(sequence=str)."""
     try:
-        with open(file_path, "r") as file:
-            sequence = ""
-            for line in file:
+        _ensure_file(path)
+        seqs: list[str] = []
+        with open(path) as fh:
+            buff = ""
+            for line in fh:
                 if line.startswith(">"):
-                    if sequence:
-                        sequences.append(sequence)
-                        sequence = ""
+                    if buff:
+                        seqs.append(buff)
+                        buff = ""
                 else:
-                    sequence += line.strip()
-            if sequence:
-                sequences.append(sequence)
-
-        if not sequences:
-            print(
-                f"[load_fasta] Предупреждение: файл '{file_path}' прочитан, но не найдено ни одной последовательности."
-            )
-            return None
-
-        return pd.DataFrame({"sequence": sequences})
+                    buff += line.strip()
+            if buff:
+                seqs.append(buff)
+        return _return_if_not_empty(pd.DataFrame({"sequence": seqs}))
     except Exception as e:
-        print(f"[load_fasta] Error loading FASTA '{file_path}': {e}")
+        logger.exception("FASTA error '%s': %s", path, e)
+    return None
+
+
+def load_vcf(path: str) -> Optional[pd.DataFrame]:
+    """Read **VCF** (requires *cyvcf2*)."""
+    if VCF is None:  # pragma: no cover
+        logger.error("Requested VCF but 'cyvcf2' is missing")
         return None
-
-
-def load_vcf(file_path: str) -> pd.DataFrame | None:
-    """
-    Загружает записи из VCF-файла в DataFrame.
-
-    Параметры:
-        file_path (str): Путь к VCF-файлу.
-
-    Возвращает:
-        pd.DataFrame или None: DataFrame с вариантами или None при ошибке.
-    """
-    if not os.path.exists(file_path):
-        print(f"[load_vcf] Error: файл '{file_path}' не существует.")
-        return None
-
-    if os.path.getsize(file_path) == 0:
-        print(f"[load_vcf] Error: файл '{file_path}' пустой.")
-        return None
-
     try:
-        vcf_reader = VCF(file_path)
-        records = []
-        for record in vcf_reader:
-            records.append(
-                {
-                    "CHROM": record.CHROM,
-                    "POS": record.POS,
-                    "ID": record.ID,
-                    "REF": record.REF,
-                    "ALT": [str(alt) for alt in record.ALT],
-                    "QUAL": record.QUAL,
-                    "FILTER": record.FILTER,
-                }
-            )
-
-        if not records:
-            print(
-                f"[load_vcf] Предупреждение: VCF '{file_path}' прочитан, но записей не найдено."
-            )
-            return None
-
-        return pd.DataFrame(records)
+        _ensure_file(path)
+        rows = [
+            {
+                "CHROM": r.CHROM,
+                "POS": r.POS,
+                "ID": r.ID,
+                "REF": r.REF,
+                "ALT": [str(a) for a in r.ALT],
+                "QUAL": r.QUAL,
+                "FILTER": r.FILTER,
+            }
+            for r in VCF(path)
+        ]
+        return _return_if_not_empty(pd.DataFrame(rows))
     except Exception as e:
-        print(f"[load_vcf] Error loading VCF '{file_path}': {e}")
+        logger.exception("VCF error '%s': %s", path, e)
+    return None
+
+
+def load_bam(path: str) -> Optional[pd.DataFrame]:
+    """Read **BAM** (requires *pysam*)."""
+    if pysam is None:  # pragma: no cover
+        logger.error("Requested BAM but 'pysam' is missing")
         return None
-
-
-def load_bam(file_path: str) -> pd.DataFrame | None:
-    """
-    Загружает выравнивания из BAM-файла в DataFrame.
-
-    Параметры:
-        file_path (str): Путь к BAM-файлу.
-
-    Возвращает:
-        pd.DataFrame или None: DataFrame с выравниваниями или None при ошибке.
-    """
-    if not os.path.exists(file_path):
-        print(f"[load_bam] Error: файл '{file_path}' не существует.")
-        return None
-
-    if os.path.getsize(file_path) == 0:
-        print(f"[load_bam] Error: файл '{file_path}' пустой.")
-        return None
-
     try:
-        bam_file = pysam.AlignmentFile(file_path, "rb")
-        records = []
-        for read in bam_file.fetch():
-            records.append(
-                {
-                    "QNAME": read.query_name,
-                    "FLAG": read.flag,
-                    "RNAME": bam_file.get_reference_name(read.reference_id),
-                    "POS": read.reference_start,
-                    "MAPQ": read.mapping_quality,
-                    "CIGAR": read.cigarstring,
-                    "SEQ": read.query_sequence,
-                    "QUAL": read.query_qualities,
-                }
-            )
-        bam_file.close()
-
-        if not records:
-            print(
-                f"[load_bam] Предупреждение: BAM '{file_path}' прочитан, но записей не найдено."
-            )
-            return None
-
-        return pd.DataFrame(records)
+        _ensure_file(path)
+        bam = pysam.AlignmentFile(path, "rb")
+        rows = [
+            {
+                "QNAME": r.query_name,
+                "FLAG": r.flag,
+                "RNAME": bam.get_reference_name(r.reference_id),
+                "POS": r.reference_start,
+                "MAPQ": r.mapping_quality,
+                "CIGAR": r.cigarstring,
+                "SEQ": r.query_sequence,
+                "QUAL": r.query_qualities,
+            }
+            for r in bam.fetch()
+        ]
+        bam.close()
+        return _return_if_not_empty(pd.DataFrame(rows))
     except Exception as e:
-        print(f"[load_bam] Error loading BAM '{file_path}': {e}")
+        logger.exception("BAM error '%s': %s", path, e)
+    return None
+
+
+def load_hdf5(path: str) -> Optional[pd.DataFrame]:
+    """Read **HDF5** (all datasets → columns)."""
+    if h5py is None:  # pragma: no cover
+        logger.error("Requested HDF5 but 'h5py' is missing")
         return None
-
-
-def load_hdf5(file_path: str) -> pd.DataFrame | None:
-    """
-    Загружает данные из HDF5-файла в DataFrame.
-
-    Параметры:
-        file_path (str): Путь к HDF5-файлу.
-
-    Возвращает:
-        pd.DataFrame или None: DataFrame с данными или None при ошибке.
-    """
-    if not os.path.exists(file_path):
-        print(f"[load_hdf5] Error: файл '{file_path}' не существует.")
-        return None
-
-    if os.path.getsize(file_path) == 0:
-        print(f"[load_hdf5] Error: файл '{file_path}' пустой.")
-        return None
-
     try:
-        with h5py.File(file_path, "r") as hdf:
+        _ensure_file(path)
+        with h5py.File(path) as hdf:
             if not hdf.keys():
-                print(
-                    f"[load_hdf5] Предупреждение: HDF5 '{file_path}' не содержит групп/данных."
-                )
+                logger.warning("HDF5 '%s' has no datasets", path)
                 return None
-
-            data = {key: hdf[key][:] for key in hdf.keys()}
-        if not data:
-            print(
-                f"[load_hdf5] Предупреждение: HDF5 '{file_path}' прочитан, но данных не найдено."
-            )
-            return None
-
-        return pd.DataFrame(data)
+            data = {k: hdf[k][()] for k in hdf.keys()}
+        return _return_if_not_empty(pd.DataFrame(data))
     except Exception as e:
-        print(f"[load_hdf5] Error loading HDF5 '{file_path}': {e}")
+        logger.exception("HDF5 error '%s': %s", path, e)
+    return None
+
+
+def load_gff(
+    path: str,
+) -> Union[pd.DataFrame, Generator[pd.DataFrame, None, None], None]:
+    """Read **GFF/GTF** (streaming large files)."""
+    if auto_load_gff is None or gffutils is None:  # pragma: no cover
+        logger.error("Requested GFF but deps missing")
         return None
+    try:
+        _ensure_file(path)
+        return auto_load_gff(path)
+    except Exception as e:
+        logger.exception("GFF error '%s': %s", path, e)
+    return None
 
 
-############################
-# Основная функция load_data
-############################
-
-
-def load_data(file_path: str, file_type: str) -> pd.DataFrame | None:
+# ──────────────────────────────────────────────────────────────
+# Public façade
+# ──────────────────────────────────────────────────────────────
+def load_data(
+    path: str,
+    ftype: str,
+    **kwargs,
+) -> Union[pd.DataFrame, Generator[pd.DataFrame, None, None], None]:
     """
-    Универсальная функция для загрузки данных из файла любого поддерживаемого формата.
+    Universal data loader.
 
-    Параметры:
-        file_path (str): Путь к файлу.
-        file_type (str): Тип файла ('csv', 'excel', 'json', 'fasta', 'vcf', 'bam', 'gff', 'hdf5').
+    Parameters
+    ----------
+    path : str
+        File path.
+    ftype : str
+        One of {'csv','excel','xls','xlsx','json','fasta',
+        'vcf','bam','gff','hdf5'}.
+    **kwargs :
+        Passed verbatim to the underlying `load_*` (e.g. ``chunksize=``).
 
-    Возвращает:
-        pd.DataFrame или генератор DataFrame (в случае большого GFF), или None при ошибке.
+    Examples
+    --------
+    >>> df = load_data("data.csv", "csv")
+    >>> for chunk in load_data("big.csv", "csv", chunksize=1_000):
+    ...     print(len(chunk))
     """
-    file_type = file_type.lower()  # делаем проверку нечувствительной к регистру
-
-    if file_type == "csv":
-        return load_csv(file_path)
-    elif file_type in ["excel", "xls", "xlsx"]:
-        return load_excel(file_path)
-    elif file_type == "json":
-        return load_json(file_path)
-    elif file_type == "fasta":
-        return load_fasta(file_path)
-    elif file_type == "vcf":
-        return load_vcf(file_path)
-    elif file_type == "bam":
-        return load_bam(file_path)
-    elif file_type == "gff":
-        # Используем auto_load_gff для гибкого определения:
-        # если файл маленький => DataFrame, если большой => генератор чанков
-        return auto_load_gff(file_path)
-    elif file_type == "hdf5":
-        return load_hdf5(file_path)
-    else:
-        print(f"[load_data] Unsupported file type: '{file_type}'")
+    ftype = ftype.lower()
+    loaders = {
+        "csv": load_csv,
+        "excel": load_excel,
+        "xls": load_excel,
+        "xlsx": load_excel,
+        "json": load_json,
+        "fasta": load_fasta,
+        "vcf": load_vcf,
+        "bam": load_bam,
+        "gff": load_gff,
+        "hdf5": load_hdf5,
+    }
+    if ftype not in loaders:
+        logger.error("Unsupported file type '%s'", ftype)
         return None
+    return loaders[ftype](path, **kwargs)

@@ -132,3 +132,14 @@ def filter_by_gc_content(df, seq_column="sequence", min_gc=0.0, max_gc=1.0):
 
     mask = df[seq_column].apply(check_gc)
     return df[mask]
+
+def filter_ngs(df: pd.DataFrame,
+            min_reads: int = 10,
+            column: str = "READS") -> pd.DataFrame:
+    """
+    Оставляет строки, где в столбце `column` ридов ≥ min_reads.
+    """
+    if column not in df.columns:
+        print(f"[filter_ngs] Колонка '{column}' не найдена — пропустил фильтр.")
+        return df
+    return df[df[column] >= min_reads]

@@ -1,18 +1,10 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
-import pandas as pd
 
 
-def plot_correlation_matrix(df: pd.DataFrame, output_path: str | None = None) -> None:
+def plot_correlation_matrix(df, output_path=None):
     """
-    Строит и отображает корреляционную матрицу для всех числовых признаков DataFrame.
-
-    Параметры:
-        df (pd.DataFrame): Входные данные.
-        output_path (str, optional): Путь для сохранения изображения. Если None, только показывается на экране.
-
-    Возвращает:
-        None
+    Строит и (опционально) сохраняет корреляционную матрицу.
     """
     try:
         corr = df.corr()
@@ -26,16 +18,9 @@ def plot_correlation_matrix(df: pd.DataFrame, output_path: str | None = None) ->
         print(f"Error plotting correlation matrix: {e}")
 
 
-def plot_distributions(df: pd.DataFrame, output_dir: str | None = None) -> None:
+def plot_distributions(df, output_dir=None):
     """
-    Строит и отображает гистограммы распределения для всех числовых признаков DataFrame.
-
-    Параметры:
-        df (pd.DataFrame): Входные данные.
-        output_dir (str, optional): Каталог для сохранения картинок. Если None, только показываются на экране.
-
-    Возвращает:
-        None
+    Строит гистограммы распределения для всех числовых признаков.
     """
     try:
         numeric_cols = df.select_dtypes(include=["float64", "int"]).columns
@@ -50,21 +35,12 @@ def plot_distributions(df: pd.DataFrame, output_dir: str | None = None) -> None:
         print(f"Error plotting distributions: {e}")
 
 
-def plot_pca(pca_result: pd.DataFrame, target_column: list | None = None) -> None:
+def plot_pca(pca_result, target_column=None):
     """
-    Визуализирует результаты анализа главных компонент (PCA).
-
-    Параметры:
-        pca_result (pd.DataFrame): DataFrame с колонками 'PC1' и 'PC2' (и, опционально, целевой переменной).
-        target_column (array-like, optional): Классы/метки для раскраски точек.
-
-    Возвращает:
-        None
+    Визуализирует результаты PCA.
     """
     try:
-        plt.scatter(
-            pca_result["PC1"], pca_result["PC2"], c=target_column, cmap="viridis"
-        )
+        plt.scatter(pca_result["PC1"], pca_result["PC2"], c=target_column, cmap="viridis")
         plt.xlabel("PC1")
         plt.ylabel("PC2")
         plt.title("PCA Visualization")

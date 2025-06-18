@@ -1,36 +1,24 @@
-# data_filtering.py
-"""
-Модуль фильтрации данных для GenoScope.
-Содержит универсальные фильтры по условиям, выбросам, корреляции, кластеризации и пайплайн-фильтрацию.
-"""
-
-import pandas as pd
-import numpy as np
+from __future__ import annotations
 import traceback
+from typing import Final
 
+
+import numpy as np
+import pandas as pd
+from scipy.stats import zscore
 from sklearn.cluster import KMeans
-from utils.outlier_utils import get_outlier_mask
+from sklearn.covariance import EmpiricalCovariance
+from sklearn.ensemble import IsolationForest
 
 ###################################
 # I. Базовые методы
 ###################################
 
 
-def filter_by_multiple_conditions(
-    df: pd.DataFrame, conditions: list[str]
-) -> pd.DataFrame:
+def filter_by_multiple_conditions(df, conditions):
     """
     Фильтрация строк на основе нескольких условий (df.query).
-
-    Пример:
-        conditions=["A > 10","B < 5"] → df.query("A > 10 & B < 5")
-
-    Параметры:
-        df (pd.DataFrame): Исходные данные.
-        conditions (list of str): Список условий (строк для query).
-
-    Возвращает:
-        pd.DataFrame: Отфильтрованный DataFrame.
+    Пример: conditions=["A > 10","B < 5"] → df.query("A > 10 & B < 5").
     """
     try:
         query_str = " & ".join(conditions)
@@ -41,16 +29,10 @@ def filter_by_multiple_conditions(
         return df
 
 
-def filter_by_custom_function(df: pd.DataFrame, func: callable) -> pd.DataFrame:
+def filter_by_custom_function(df, func):
     """
-    Фильтрация строк на основе пользовательской функции.
-
-    Параметры:
-        df (pd.DataFrame): Исходные данные.
-        func (callable): Функция, принимающая строку (Series), возвращающая True/False.
-
-    Возвращает:
-        pd.DataFrame: Отфильтрованный DataFrame.
+    Фильтрация строк на основе пользовательской логики.
+    func(row) -> True/False, где row - строка DataFrame.
     """
     try:
         return df[df.apply(func, axis=1)]
@@ -65,20 +47,9 @@ def filter_by_custom_function(df: pd.DataFrame, func: callable) -> pd.DataFrame:
 ###################################
 
 
-def filter_by_percentile(
-    df: pd.DataFrame, column: str, lower: int = 5, upper: int = 95
-) -> pd.DataFrame:
+def filter_by_percentile(df, column, lower=5, upper=95):
     """
-    Удаляет строки, где значения столбца выходят за пределы заданных перцентилей.
-
-    Параметры:
-        df (pd.DataFrame): Исходные данные.
-        column (str): Имя столбца.
-        lower (float): Нижний перцентиль.
-        upper (float): Верхний перцентиль.
-
-    Возвращает:
-        pd.DataFrame: Отфильтрованный DataFrame.
+    Удаление строк, где значения столбца выходят за [lower_percentile, upper_percentile].
     """
     try:
         lb = np.percentile(df[column], lower)
@@ -90,32 +61,88 @@ def filter_by_percentile(
         return df
 
 
+# -----------------------------------------------------------------------------
+# Функция-обёртка
+# -----------------------------------------------------------------------------
 def filter_outliers(
     df: pd.DataFrame,
     column: str | None = None,
+    *,
     method: str = "iqr",
     threshold: float = 1.5,
 ) -> pd.DataFrame:
     """
-    Удаляет выбросы из DataFrame на основе выбранного алгоритма.
+    Удаляет выбросы (строки) по одному из четырёх методов.
 
-    Параметры:
-        df (pd.DataFrame): Данные для фильтрации.
-        column (str или None): Столбец для фильтрации или None (по всем числовым столбцам).
-        method (str): Метод обнаружения выбросов ('iqr', 'z-score', 'mahalanobis', 'isolation_forest').
-        threshold (float): Параметр метода.
+    Parameters
+    ----------
+    df : pd.DataFrame
+    column : str | None
+        Для "iqr" и "z-score" — числовой столбец, по которому ищем выбросы.
+        Для "mahalanobis" и "isolation_forest" игнорируется (берутся все
+        числовые фичи).
+    method : {"iqr", "z-score", "mahalanobis", "isolation_forest"}
+    threshold : float
+        ▸ IQR — множитель (обычно 1.5)  
+        ▸ Z-score — максимальный |z| (обычно 3)  
+        ▸ Mahalanobis — порог расстояния (≈ χ²-квантиль)  
+        ▸ IsolationForest — contamination = threshold (доля выбросов)
 
-    Возвращает:
-        pd.DataFrame: Очищенный DataFrame без выбросов.
+    Returns
+    -------
+    pd.DataFrame
+        df без строк-выбросов
     """
-    mask = get_outlier_mask(df, column, method, threshold)
-    if column:
-        return df[~mask]
-    else:
-        if isinstance(mask, pd.DataFrame):
-            return df[~mask.any(axis=1)]
-        else:
-            return df[~mask]
+    method: Final = method.lower()
+
+    # --- sanity checks -------------------------------------------------------
+    if method in {"iqr", "z-score"} and not column:
+        raise ValueError(
+            f"[filter_outliers] Для метода “{method}” нужно указать column."
+        )
+    if method not in {"iqr", "z-score", "mahalanobis", "isolation_forest"}:
+        raise ValueError(f"[filter_outliers] Unsupported method: {method}")
+
+    try:
+        # ------------------------------------------------------------------ #
+        if method == "iqr":
+            q1, q3 = df[column].quantile([0.25, 0.75])
+            iqr = q3 - q1
+            lb, ub = q1 - threshold * iqr, q3 + threshold * iqr
+            return df[(df[column] >= lb) & (df[column] <= ub)]
+
+        # ------------------------------------------------------------------ #
+        if method == "z-score":
+            z = zscore(df[column].astype(float), nan_policy="omit")
+            return df[np.abs(z) <= threshold]
+
+        # ------------------------------------------------------------------ #
+        if method == "mahalanobis":
+            num_df = df.select_dtypes(include=[np.number]).dropna(axis=0)
+            if num_df.empty or len(num_df) < 3:
+                # Махаланобис плохо работает на 1-2 строках
+                return df
+            cov = EmpiricalCovariance().fit(num_df)
+            distances = cov.mahalanobis(num_df)
+            mask_keep = distances <= threshold
+            return df.loc[num_df.index[mask_keep]]
+
+        # ------------------------------------------------------------------ #
+        # isolation_forest
+        cont = float(threshold) if 0 < threshold < 1 else 0.05
+        num_df = df.select_dtypes(include=[np.number]).dropna(axis=0)
+        if num_df.empty:
+            return df
+        iso = IsolationForest(contamination=cont, random_state=0)
+        preds = iso.fit_predict(num_df)  # +1 — норма, -1 — аномалия
+        mask_keep = preds == 1
+        return df.loc[num_df.index[mask_keep]]
+
+    except Exception as exc:  # <- ловим, чтобы не уронить пайплайн
+        print(f"[filter_outliers] Error: {exc}")
+        traceback.print_exc()
+        return df
+
 
 
 ###################################
@@ -123,23 +150,11 @@ def filter_outliers(
 ###################################
 
 
-def filter_by_value_range(
-    df: pd.DataFrame,
-    column: str,
-    min_value: float | None = None,
-    max_value: float | None = None,
-) -> pd.DataFrame:
+def filter_by_value_range(df, column, min_value=None, max_value=None):
     """
-    Удаляет строки, где значение столбца выходит за пределы [min_value, max_value].
-
-    Параметры:
-        df (pd.DataFrame): Исходные данные.
-        column (str): Имя столбца.
-        min_value (float, optional): Нижняя граница (если None, не используется).
-        max_value (float, optional): Верхняя граница (если None, не используется).
-
-    Возвращает:
-        pd.DataFrame: Отфильтрованный DataFrame.
+    Удаление строк, где значение столбца column выходит за диапазон [min_value, max_value].
+    Если min_value=None, не ограничиваем снизу;
+    если max_value=None, не ограничиваем сверху.
     """
     try:
         res = df
@@ -154,20 +169,13 @@ def filter_by_value_range(
         return df
 
 
-def filter_by_nan(
-    df: pd.DataFrame, how: str = "any", axis: int = 0, subset: list[str] | None = None
-) -> pd.DataFrame:
+def filter_by_nan(df, how="any", axis=0, subset=None):
     """
-    Удаляет строки или столбцы с NaN (pandas dropna).
-
-    Параметры:
-        df (pd.DataFrame): Данные.
-        how (str): 'any' — если есть хотя бы один NaN; 'all' — если все NaN.
-        axis (int): 0 — строки, 1 — столбцы.
-        subset (list, optional): Список столбцов для анализа NaN.
-
-    Возвращает:
-        pd.DataFrame: DataFrame без NaN.
+    Удаление строк или столбцов с NaN (pandas dropna).
+    ПАРАМЕТРЫ:
+      how='any'/'all'
+      axis=0 => строки, axis=1 => столбцы
+      subset: список столбцов
     """
     try:
         return df.dropna(axis=axis, how=how, subset=subset)
@@ -177,19 +185,11 @@ def filter_by_nan(
         return df
 
 
-def filter_duplicates(
-    df: pd.DataFrame, keep: str = "first", subset: list[str] | None = None
-) -> pd.DataFrame:
+def filter_duplicates(df, keep="first", subset=None):
     """
-    Удаляет дубликаты строк (pandas drop_duplicates).
-
-    Параметры:
-        df (pd.DataFrame): Исходные данные.
-        keep (str): 'first', 'last' или False.
-        subset (list, optional): Список столбцов для сравнения.
-
-    Возвращает:
-        pd.DataFrame: DataFrame без дубликатов.
+    Удаление дубликатов строк (pandas drop_duplicates).
+    keep='first'/'last'/False,
+    subset: список столбцов
     """
     try:
         return df.drop_duplicates(subset=subset, keep=keep)
@@ -199,25 +199,15 @@ def filter_duplicates(
         return df
 
 
-def filter_by_correlation(
-    df: pd.DataFrame, corr_threshold: float = 0.95
-) -> pd.DataFrame:
+def filter_by_correlation(df, corr_threshold=0.95):
     """
-    Удаляет сильно коррелированные столбцы (feature selection).
-
-    Параметры:
-        df (pd.DataFrame): Данные.
-        corr_threshold (float): Порог корреляции, выше которого удалять столбцы.
-
-    Возвращает:
-        pd.DataFrame: DataFrame без коррелированных столбцов.
+    Удаление сильно коррелированных столбцов (feature selection).
+    Оставляем по одному из группы столбцов, корелл. выше corr_threshold.
     """
     try:
         corr_matrix = df.corr().abs()
         upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
-        to_drop = [
-            column for column in upper.columns if any(upper[column] > corr_threshold)
-        ]
+        to_drop = [column for column in upper.columns if any(upper[column] > corr_threshold)]
         return df.drop(columns=to_drop)
     except Exception as e:
         print(f"Error in filter_by_correlation: {e}")
@@ -225,16 +215,10 @@ def filter_by_correlation(
         return df
 
 
-def filter_by_variance(df: pd.DataFrame, var_threshold: float = 0.0) -> pd.DataFrame:
+def filter_by_variance(df, var_threshold=0.0):
     """
-    Удаляет признаки (столбцы) с дисперсией <= var_threshold.
-
-    Параметры:
-        df (pd.DataFrame): Данные.
-        var_threshold (float): Порог дисперсии (0 — только нулевая).
-
-    Возвращает:
-        pd.DataFrame: DataFrame без "пустых" признаков.
+    Удаление признаков (столбцов) с дисперсией <= var_threshold.
+    var_threshold=0 -> удаляем столбцы, где var=0.
     """
     try:
         variances = df.var(numeric_only=True)
@@ -246,29 +230,21 @@ def filter_by_variance(df: pd.DataFrame, var_threshold: float = 0.0) -> pd.DataF
         return df
 
 
-def filter_by_cluster(
-    df: pd.DataFrame,
-    method: str = "kmeans",
-    n_clusters: int = 2,
-    drop_outliers: bool = True,
-) -> pd.DataFrame:
+def filter_by_cluster(df, method="kmeans", n_clusters=2, drop_outliers=True):
     """
-    Удаляет точки, не вписывающиеся в кластеры (напр. методом KMeans).
-
-    Параметры:
-        df (pd.DataFrame): Исходные данные.
-        method (str): Метод кластеризации ('kmeans' поддерживается).
-        n_clusters (int): Число кластеров.
-        drop_outliers (bool): Удалять ли выбросы вдали от центроида.
-
-    Возвращает:
-        pd.DataFrame: Отфильтрованный DataFrame.
+    Удаление точек, которые "не вписываются" в кластеры.
+    Здесь реальная реализация KMeans.
+    ПАРАМЕТРЫ:
+      method='kmeans'
+      n_clusters=2
+      drop_outliers=True (предположим, убираем точки, у которых расстояние > 2*std от центроида)
     """
     try:
         if method != "kmeans":
             print("[filter_by_cluster] only 'kmeans' supported now.")
             return df
 
+        # Берём все числовые столбцы, убираем NaN
         num_df = df.select_dtypes(include=[np.number]).dropna(axis=0)
         if num_df.empty:
             return df
@@ -277,6 +253,7 @@ def filter_by_cluster(
         labels = km.fit_predict(num_df)
         centroids = km.cluster_centers_
 
+        # Для каждой точки считаем расстояние до её центроида
         distances = []
         for i, row in enumerate(num_df.values):
             cluster_id = labels[i]
@@ -285,6 +262,8 @@ def filter_by_cluster(
             distances.append(dist)
         distances = np.array(distances)
 
+        # Примем, что "слишком далеко" = dist > mean+2*std
+        # (очень грубо).
         if drop_outliers:
             mean_dist = distances.mean()
             std_dist = distances.std()
@@ -293,7 +272,7 @@ def filter_by_cluster(
             good_idx = num_df.index[good_mask]
             return df.loc[good_idx]
         else:
-            return df
+            return df  # не убираем "дальних" — просто не фильтруем
 
     except Exception as e:
         print(f"Error in filter_by_cluster: {e}")
@@ -306,19 +285,11 @@ def filter_by_cluster(
 ###################################
 
 
-def apply_filter_pipeline(df: pd.DataFrame, pipeline: list[dict]) -> pd.DataFrame:
+def apply_filter_pipeline(df, pipeline):
     """
-    Последовательно применяет несколько шагов фильтрации к DataFrame.
-
-    Каждый шаг задаётся словарём, например:
-        {"type": "outliers", "column": "X", "method": "iqr", ...}
-
-    Параметры:
-        df (pd.DataFrame): Данные.
-        pipeline (list of dict): Описание шагов фильтрации.
-
-    Возвращает:
-        pd.DataFrame: DataFrame после всех фильтров.
+    Применяет несколько шагов фильтрации подряд к DataFrame.
+    Каждый шаг — словарь вида:
+      { "type": "...", ... }
     """
     for step in pipeline:
         step_type = step.get("type")
@@ -380,9 +351,7 @@ def apply_filter_pipeline(df: pd.DataFrame, pipeline: list[dict]) -> pd.DataFram
                 )
 
             else:
-                print(
-                    f"[apply_filter_pipeline] Неизвестный тип фильтрации: {step_type}"
-                )
+                print(f"[apply_filter_pipeline] Неизвестный тип фильтрации: {step_type}")
 
         except Exception as e:
             print(f"[apply_filter_pipeline] Ошибка при шаге '{step_type}': {e}")

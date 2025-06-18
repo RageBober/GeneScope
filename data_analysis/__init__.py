@@ -1,8 +1,7 @@
 # data_analysis/__init__.py
-
-# --- Загрузка / приём данных -------------------------------------------------
-from .data_ingestion import load_data
-from .data_filtering import filter_outliers
+"""
+Единая точка экспорта публичных API GenoScope.
+"""
 
 from .data_cleaning import (
     remove_duplicates,
@@ -10,22 +9,29 @@ from .data_cleaning import (
     detect_outliers,
 )
 
-# --- Фильтрация выбросов -----------------------------------------------------
-#  filter_outliers живёт в data_filtering.py, импортируем оттуда
-# -------------------------------------------------------------------
-from .analysis_core import extract_pca, select_features, correlation_analysis
-from .visualization import plot_pca
-from .sequence_analysis import encode_sequences
+# ― Функции фильтрации ―
+from .data_filtering import filter_outliers  # ← ИСПРАВЛЕНО: правильный модуль
 
-__all__ = [
-    "load_data",
+# ― Аналитика ―
+from .analysis_core import (
+    select_features,
+    extract_pca,
+    correlation_analysis,
+    generate_statistics,
+    analyze_data,
+)
+
+__all__: list[str] = [
+    # cleaning
     "remove_duplicates",
     "handle_missing_values",
     "detect_outliers",
+    # filtering
     "filter_outliers",
-    "extract_pca",
+    # analytics
     "select_features",
+    "extract_pca",
     "correlation_analysis",
-    "plot_pca",
-    "encode_sequences",
+    "generate_statistics",
+    "analyze_data",
 ]

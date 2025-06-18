@@ -1,18 +1,20 @@
-from data_analysis.data_ingestion import load_data
-from data_analysis.data_cleaning import remove_duplicates, handle_missing_values
+import os
+import tkinter as tk
+
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+
+from data_analysis.analysis_core import extract_pca
+from data_analysis.data_cleaning import handle_missing_values, remove_duplicates
 from data_analysis.data_filtering import (
-    filter_by_multiple_conditions,
     filter_by_custom_function,
+    filter_by_multiple_conditions,
     filter_by_percentile,
     filter_outliers,
 )
-from data_analysis.analysis_core import extract_pca
+from data_analysis.data_ingestion import load_data
 from data_analysis.visualization import plot_pca
-from sklearn.preprocessing import LabelEncoder
-import pandas as pd
-import tkinter as tk
 from interface import GenoScopeApp
-import os
 
 print(os.getcwd())
 

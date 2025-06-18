@@ -1,4 +1,5 @@
 # filter_variants.py
+import pandas as pd
 
 
 def filter_by_qual(df, qual_col="QUAL", min_qual=30.0):
@@ -14,9 +15,7 @@ def filter_by_qual(df, qual_col="QUAL", min_qual=30.0):
     - pd.DataFrame (отфильтрованный)
     """
     if qual_col not in df.columns:
-        print(
-            f"[filter_by_qual] Колонка '{qual_col}' не найдена, пропускаем фильтрацию."
-        )
+        print(f"[filter_by_qual] Колонка '{qual_col}' не найдена, пропускаем фильтрацию.")
         return df
 
     # Отфильтровываем строки, где QUAL >= min_qual
@@ -82,9 +81,7 @@ def filter_by_allele_frequency(df, af_col="AF", min_af=0.01, max_af=0.99):
     - pd.DataFrame
     """
     if af_col not in df.columns:
-        print(
-            f"[filter_by_allele_frequency] Колонка '{af_col}' не найдена, пропускаем."
-        )
+        print(f"[filter_by_allele_frequency] Колонка '{af_col}' не найдена, пропускаем.")
         return df
 
     return df[(df[af_col] >= min_af) & (df[af_col] <= max_af)]
@@ -131,11 +128,7 @@ def filter_by_annotation(df, ann_col="ANN", allowed_types=None):
 
 
 def filter_by_db_snp_clinvar(
-    df,
-    db_col="dbSNP_ID",
-    clinvar_col="ClinVar_ID",
-    require_dbsnp=True,
-    require_clinvar=False,
+    df, db_col="dbSNP_ID", clinvar_col="ClinVar_ID", require_dbsnp=True, require_clinvar=False
 ):
     """
     Фильтрация по базам данных:
@@ -197,23 +190,17 @@ def apply_variant_filter_pipeline(df, pipeline):
         try:
             if step_type == "qual":
                 df = filter_by_qual(
-                    df,
-                    qual_col=step.get("qual_col", "QUAL"),
-                    min_qual=step.get("min_qual", 30.0),
+                    df, qual_col=step.get("qual_col", "QUAL"), min_qual=step.get("min_qual", 30.0)
                 )
 
             elif step_type == "depth":
                 df = filter_by_depth(
-                    df,
-                    depth_col=step.get("depth_col", "DP"),
-                    min_depth=step.get("min_depth", 10),
+                    df, depth_col=step.get("depth_col", "DP"), min_depth=step.get("min_depth", 10)
                 )
 
             elif step_type == "strand_bias":
                 df = filter_by_strand_bias(
-                    df,
-                    sb_col=step.get("sb_col", "SB"),
-                    max_bias=step.get("max_bias", 0.01),
+                    df, sb_col=step.get("sb_col", "SB"), max_bias=step.get("max_bias", 0.01)
                 )
 
             elif step_type == "allele_freq":
@@ -241,9 +228,7 @@ def apply_variant_filter_pipeline(df, pipeline):
                 )
 
             else:
-                print(
-                    f"[apply_variant_filter_pipeline] Неизвестный тип фильтра: {step_type}"
-                )
+                print(f"[apply_variant_filter_pipeline] Неизвестный тип фильтра: {step_type}")
 
         except Exception as e:
             print(f"[apply_variant_filter_pipeline] Ошибка при шаге '{step_type}': {e}")
@@ -252,13 +237,24 @@ def apply_variant_filter_pipeline(df, pipeline):
 
     return df
 
+def filter_variants(
+    df: pd.DataFrame,
+    qual_col: str = "QUAL",
+    min_qual: float = 30.0,
+) -> pd.DataFrame:
+    """
+    Черновой фильтр вариаций:
+    оставляет строки, где `qual_col` ≥ `min_qual`.
 
-def filter_variants(df, column="IMPACT", impact_type="HIGH"):
+    👉  TODO (#issue-ID): расширить
+        • DP/AD,  • strand-bias,
+        • impact ("HIGH"/"MODERATE"), …
     """
-    Фильтрует варианты (например, мутации) по значению в столбце column.
-    По умолчанию оставляет только те строки, где IMPACT == "HIGH".
-    """
-    if column not in df.columns:
-        print(f"[filter_variants] Колонка '{column}' не найдена, пропускаем фильтр.")
+    if qual_col not in df.columns:
+        print(f"[filter_variants] Колонка '{qual_col}' не найдена — пропустил фильтр.")
         return df
-    return df[df[column] == impact_type]
+
+    return df[df[qual_col] >= min_qual]
+
+
+__all__ = ["filter_variants"]

@@ -24,9 +24,7 @@ def get_outlier_mask(
         pd.Series или pd.DataFrame: Булева маска (True — выброс, False — нормальное значение).
     """
     if df.empty:
-        return pd.DataFrame(
-            False, index=df.index, columns=[column] if column else df.columns
-        )
+        return pd.DataFrame(False, index=df.index, columns=[column] if column else df.columns)
 
     if method in ["iqr", "z-score"]:
         cols = [column] if column else df.select_dtypes(include=[np.number]).columns
