@@ -1,6 +1,6 @@
 import pandas as pd
-from data_analysis import detect_outliers, filter_outliers
-from data_analysis.data_cleaning import detect_outliers
+from genoscope.data_analysis.data_filtering import filter_outliers
+from genoscope.data_analysis.data_cleaning import detect_outliers
 
 
 def test_detect_outliers_mask():
@@ -18,7 +18,7 @@ def test_filter_outliers_removed():
 def test_detect_outliers_iqr():
     df = pd.DataFrame({"x": [1, 2, 3, 1000]})
     mask = detect_outliers(df, column="x", method="iqr")
-    assert mask.iloc[-1] == True  # 1000 — выброс
+    assert mask.iloc[-1]  # 1000 — выброс
     assert mask.sum() == 1  # Только 1 выброс
 
 
@@ -26,7 +26,7 @@ def test_detect_outliers_zscore_large():
     values = [10] * 10 + [1000]
     df = pd.DataFrame({"x": values})
     mask = detect_outliers(df, column="x", method="z-score", threshold=2)
-    assert mask.iloc[-1] == True
+    assert mask.iloc[-1]
     assert mask.sum() == 1
 
 
@@ -35,7 +35,7 @@ def test_detect_outliers_mahalanobis_large():
     df = pd.DataFrame({"x": values, "y": values})
     mask = detect_outliers(df, method="mahalanobis", threshold=9.21)
     # mask — Series булевых значений по строкам
-    assert mask.iloc[-1] == True
+    assert mask.iloc[-1]
     assert mask.sum() == 1
 
 
@@ -44,7 +44,7 @@ def test_detect_outliers_isolation_forest():
     df = pd.DataFrame({"x": values, "y": values})
     mask = detect_outliers(df, method="isolation_forest", threshold=0.05)
     # Проверяем, что выброс выделился (из-за рандома их может быть больше одного)
-    assert mask.iloc[-1] == True
+    assert mask.iloc[-1]
 
 
 def test_detect_outliers_no_outliers():

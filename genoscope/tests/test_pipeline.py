@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
-from data_analysis.data_filters.pipeline import run_filters
-
+from genoscope.data_analysis.data_filters.pipeline import run_filters
 
 def test_pipeline_outliers():
     df = pd.DataFrame({"val": np.r_[np.random.randn(10), 999]})

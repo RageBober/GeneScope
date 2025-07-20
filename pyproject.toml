@@ -1,21 +1,55 @@
-[tool.black]
-line-length = 100
+[tool.poetry]
+name = "genoscope"
+version = "0.1.0"
+description = "Toolkit for biological data analysis"
+authors = ["RageBober <dzumenov@gmail.com>"]
+readme = "README.md"
 
-[tool.ruff]
-line-length = 100
-extend-select = ["E", "F", "W", "I"]
-ignore = ["E501", "F401"]
-exclude = [".venv", "tests/"]
+packages = [{ include = "genoscope",  from = "src" }]
 
-[tool.mypy]
-python_version = "3.11"
-ignore_missing_imports = true
-strict = true
-exclude = 'tests/'
+[tool.poetry.dependencies]
+python = "^3.11"
+
+# основные библиотеки (из requirements.txt / .in)
+pandas = "^2.3"
+numpy = "^1.26"
+scikit-learn = "^1.3"
+pytest = "^8.3"
+cyvcf2 = "^0.31"
+biopython = "^1.81"
+requests = "^2.32"
+openpyxl = "^3.1"
+pysam = { version = "^0.22", optional = true }   # тяжёлые C-расширения можно пометить optional
+h5py   = { version = "^3.12", optional = true }
+gffutils = { version = "^0.13", optional = true }
+dask = "2025.2"
+matplotlib = "^3.9"
+seaborn = "^0.13"
+[tool.poetry.extras]
+io   = ["pysam", "h5py"]     # poetry install --extras "io"
+gff  = ["gffutils"]
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.4"
+black = "^24.4"
+mypy = "^1.10"
+pytest-cov = "^6.1"
+pipreqs = "^0.4"             # для автогенерации requirements.in/lock
+mutmut = "^3.3.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
-minversion = "6.0"
-addopts = "-ra -q"
-testpaths = [
-    "tests",
-]
+addopts = "-ra -q --cov=src --cov-report=term-missing --import-mode=importlib"
+
+testpaths = ["genoscope/tests"]
+
+[tool.mypy]
+explicit_package_bases = true
+mypy_path = "src"
+
+[tool.coverage.run]
+source = ["genoscope"]

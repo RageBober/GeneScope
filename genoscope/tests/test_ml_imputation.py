@@ -1,5 +1,5 @@
 import pandas as pd
-from MLmodel.data_cleaning_AI.ml_imputation import fill_missing_with_ml
+from genoscope.mlmodel.data_cleaning_AI.ml_imputation import fill_missing_with_ml
 
 
 def test_fill_missing_numeric():

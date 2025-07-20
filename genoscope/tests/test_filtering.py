@@ -1,5 +1,5 @@
 import pandas as pd
-from data_analysis.data_filtering import filter_outliers
+from genoscope.data_analysis.data_filtering import filter_outliers
 
 
 def test_filter_outliers_iqr():
