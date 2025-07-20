@@ -1,6 +1,4 @@
-# .github/workflows/quality-ci.yml
-
-name: Quality CI
+name: CI
 
 on:
   push:
@@ -9,26 +7,101 @@ on:
     branches: [ main, master ]
 
 jobs:
+# ────────────────────────────────────────────────────────────────
+# 1) Static-quality + coverage (Poetry, Python 3.11)
+# ────────────────────────────────────────────────────────────────
   quality:
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
 
+    # --- Python --------------------------------------------------
     - uses: actions/setup-python@v5
+      id: setup-python
       with:
         python-version: "3.11"
 
-    - run: pip install -r requirements.txt
-    - run: pip install ruff black mypy bandit pytest pytest-cov
-
-    - run: ruff check genoscope/
-    - run: black --check genoscope/
-    - run: mypy genoscope/
-    - run: bandit -r genoscope -q
-    - run: pytest --cov=genoscope --cov-report=xml
-
-    - uses: codecov/codecov-action@v4
+    # --- Poetry --------------------------------------------------
+    - uses: abatilo/actions-poetry@v3
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./coverage.xml
+        poetry-version: "1.8.2"
+
+    # --- Cache Poetry venvs -------------------------------------
+    - name: Cache Poetry virtualenv
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pypoetry/virtualenvs
+        # ↓ корректная ссылка на версию Python из шага setup-python
+        key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-
+
+    # --- Install all dev + I/O + GFF extras ---------------------
+    - name: Install dependencies (dev + io gff)
+      run: poetry install --no-interaction --with dev --extras "io gff"
+
+    # --- Linters & static analysers -----------------------------
+    - name: Ruff
+      run: poetry run ruff check .
+
+    - name: Black (check-only)
+      run: poetry run black --check .
+
+    - name: mypy strict
+      run: poetry run mypy --strict src/data_analysis
+
+    - name: Bandit security scan
+      run: poetry run bandit -r src/data_analysis -q
+
+    # --- Tests + XML coverage for Codecov / Sonar, etc. ----------
+    - name: Pytest + coverage
+      run: >
+        poetry run pytest --cov=src
+        --cov-report=xml
+        --cov-report=term-missing
+        -q
+
+# ────────────────────────────────────────────────────────────────
+# 2) Matrix unit-tests (different Py versions / extras)
+# ────────────────────────────────────────────────────────────────
+  tests:
+    runs-on: ubuntu-latest
+    needs: quality        # запускать только после успешного quality
+
+    strategy:
+      matrix:
+        python-version: [ '3.10', '3.11' ]
+        extras:
+          # heavy I/O extras
+          - "io gff"
+          # ML-extras (пример)
+          - "ml"
+          # lite / без extras
+          - ""
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - uses: abatilo/actions-poetry@v3
+      with:
+        poetry-version: "1.8.2"
+
+    - name: Cache Poetry virtualenv
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pypoetry/virtualenvs
+        key: ${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}-${{ matrix.extras }}
+        restore-keys: |
+          ${{ runner.os }}-py${{ matrix.python-version }}-
+
+    - name: Install project (dev + extras)
+      run: |
+        poetry install --no-interaction --with dev --extras "${{ matrix.extras }}"
+
+    - name: Run pytest
+      run: poetry run pytest -q
