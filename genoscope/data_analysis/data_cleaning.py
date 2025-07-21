@@ -13,7 +13,7 @@ from sklearn.ensemble import IsolationForest, RandomForestRegressor
 from sklearn.linear_model import LogisticRegression
 
 # ─── LOCAL / INTERNAL ───────────────────────────────────────────────
-from mlmodel.data_cleaning_AI.ml_imputation import fill_missing_with_ml
+from genoscope.mlmodel.data_cleaning_AI.ml_imputation import fill_missing_with_ml
 
 """data_analysis.data_cleaning
 ---------------------------------
