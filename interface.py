@@ -4,8 +4,8 @@ from tkinter import filedialog, messagebox, ttk
 
 import pandas as pd
 
-from data_analysis.data_cleaning import handle_missing_values, remove_duplicates
-from data_analysis.data_ingestion import load_data
+from genoscope.data_analysis.data_cleaning import handle_missing_values, remove_duplicates
+from genoscope.data_analysis.data_ingestion import load_data
 
 
 class ProgressWindow:
