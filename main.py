@@ -4,16 +4,16 @@ import tkinter as tk
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
-from data_analysis.analysis_core import extract_pca
-from data_analysis.data_cleaning import handle_missing_values, remove_duplicates
-from data_analysis.data_filtering import (
+from genoscope.data_analysis.analysis_core import extract_pca
+from genoscope.data_analysis.data_cleaning import handle_missing_values, remove_duplicates
+from genoscope.data_analysis.data_filtering import (
     filter_by_custom_function,
     filter_by_multiple_conditions,
     filter_by_percentile,
     filter_outliers,
 )
-from data_analysis.data_ingestion import load_data
-from data_analysis.visualization import plot_pca
+from genoscope.data_analysis.data_ingestion import load_data
+from genoscope.data_analysis.visualization import plot_pca
 from interface import GenoScopeApp
 
 print(os.getcwd())

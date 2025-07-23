@@ -49,15 +49,15 @@ jobs:
       run: poetry run black --check .
 
     - name: mypy strict
-      run: poetry run mypy --strict src/data_analysis
+      run: poetry run mypy --strict genoscope/data_analysis
 
     - name: Bandit security scan
-      run: poetry run bandit -r src/data_analysis -q
+      run: poetry run bandit -r genoscope/data_analysis -q
 
     # --- Tests + XML coverage for Codecov / Sonar, etc. ----------
     - name: Pytest + coverage
       run: >
-        poetry run pytest --cov=src
+        poetry run pytest --cov=genoscope
         --cov-report=xml
         --cov-report=term-missing
         -q

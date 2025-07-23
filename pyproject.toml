@@ -5,7 +5,7 @@ description = "Toolkit for biological data analysis"
 authors = ["RageBober <dzumenov@gmail.com>"]
 readme = "README.md"
 
-packages = [{ include = "genoscope",  from = "src" }]
+packages = [{ include = "genoscope" }]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -43,13 +43,13 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
-addopts = "-ra -q --cov=src --cov-report=term-missing --import-mode=importlib"
+addopts = "-ra -q --cov=genoscope --cov-report=term-missing --import-mode=importlib"
 
-testpaths = ["genoscope/tests"]
+testpaths = ["tests"]
 
 [tool.mypy]
 explicit_package_bases = true
-mypy_path = "src"
+mypy_path = "."
 
 [tool.coverage.run]
 source = ["genoscope"]
