@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+       viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <title>crispr</title>
+
+<!-- helix top -->
+<path d="M8 4c3 2 3 5 0 7"/>
+<path d="M16 4c-3 2-3 5 0 7"/>
+<path d="M9 6h6"/>
+<path d="M15 9H9"/>
+<!-- helix bottom -->
+<path d="M8 14c3 2 3 5 0 7"/>
+<path d="M16 14c-3 2-3 5 0 7"/>
+<path d="M9 15h6"/>
+<path d="M15 18H9"/>
+<!-- scissors at the cut (center gap 11–13) -->
+<circle cx="18" cy="10" r="1.5"/>
+<circle cx="20.5" cy="12.5" r="1.5"/>
+<path d="M17.2 10.8L13 12"/>
+<path d="M21 12l-4 2"/>
+
+  </svg>

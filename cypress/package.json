@@ -1,0 +1,22 @@
+{
+  "name": "genoscope-e2e",
+  "version": "1.0.0",
+  "description": "E2E tests for GenoScope",
+  "scripts": {
+    "cy:open": "cypress open",
+    "cy:run": "cypress run",
+    "cy:run:chrome": "cypress run --browser chrome",
+    "cy:run:firefox": "cypress run --browser firefox",
+    "cy:run:headed": "cypress run --headed",
+    "cy:run:record": "cypress run --record",
+    "test:e2e": "start-server-and-test start http://localhost:3000 cy:run",
+    "test:e2e:ci": "start-server-and-test start:ci http://localhost:3000 cy:run:record"
+  },
+  "devDependencies": {
+    "cypress": "^13.0.0",
+    "cypress-file-upload": "^5.0.8",
+    "@testing-library/cypress": "^10.0.0",
+    "start-server-and-test": "^2.0.0",
+    "eslint-plugin-cypress": "^2.15.0"
+  }
+}

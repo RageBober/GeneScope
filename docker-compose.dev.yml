@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: genoscope-postgres
+    environment:
+      POSTGRES_USER: genoscope
+      POSTGRES_PASSWORD: genoscope_password
+      POSTGRES_DB: genoscope
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U genoscope"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: genoscope-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API (for development)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: genoscope-backend
+    environment:
+      DATABASE_URL: postgresql://genoscope:genoscope_password@postgres:5432/genoscope
+      REDIS_URL: redis://redis:6379
+      SECRET_KEY: ${SECRET_KEY:-development-secret-key}
+      ENVIRONMENT: development
+    volumes:
+      - ./src:/app/src
+      - ./data:/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn src.genoscope.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  postgres_data:
+  redis_data:

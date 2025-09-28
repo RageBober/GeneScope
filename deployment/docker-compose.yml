@@ -1,0 +1,397 @@
+# GenoScope Docker Compose Configuration
+# Supports development, testing, and production environments
+
+version: '3.8'
+
+# Shared configuration
+x-common-env: &common-env
+  PYTHONUNBUFFERED: 1
+  PYTHONDONTWRITEBYTECODE: 1
+
+x-app-volumes: &app-volumes
+  - ./src:/app/src
+  - ./uploads:/app/uploads
+  - ./data:/app/data
+  - ./logs:/app/logs
+  - ./genoscope.db:/app/genoscope.db
+
+services:
+  # =============================================================================
+  # Core Services
+  # =============================================================================
+  
+  # Main API Service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development  # Use development stage for local development
+      args:
+        BUILD_DATE: ${BUILD_DATE:-}
+        VCS_REF: ${VCS_REF:-}
+        VERSION: ${VERSION:-dev}
+    container_name: genoscope-api
+    hostname: genoscope-api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      <<: *common-env
+      GENOSCOPE_ENV: ${GENOSCOPE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      
+      # Database
+      DB_DATABASE_URL: sqlite:///./genoscope.db
+      
+      # Cache and Queue
+      CACHE_REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      
+      # Security
+      SECURITY_MAX_FILE_SIZE: ${MAX_FILE_SIZE:-104857600}  # 100MB
+      SECURITY_CORS_ORIGINS: '["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000"]'
+      
+      # Analysis
+      ANALYSIS_MAX_WORKERS: ${MAX_WORKERS:-4}
+      ANALYSIS_USE_MULTIPROCESSING: true
+      
+      # Directories
+      DIR_UPLOAD_DIR: /app/uploads
+      DIR_DATA_DIR: /app/data
+      DIR_LOGS_DIR: /app/logs
+      
+    volumes: *app-volumes
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+        required: false  # Optional for development
+    networks:
+      - genoscope-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Celery Worker for Background Tasks
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: genoscope-worker
+    hostname: genoscope-worker
+    restart: unless-stopped
+    command: >
+      sh -c "
+        echo 'Waiting for Redis...' &&
+        sleep 10 &&
+        celery -A genoscope.api.celery_app worker 
+        --loglevel=${CELERY_LOG_LEVEL:-info} 
+        --concurrency=${CELERY_CONCURRENCY:-2}
+        --queues=analysis,reports,maintenance
+      "
+    environment:
+      <<: *common-env
+      GENOSCOPE_ENV: ${GENOSCOPE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      
+      # Same config as API
+      CACHE_REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      DB_DATABASE_URL: sqlite:///./genoscope.db
+      
+    volumes: *app-volumes
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    networks:
+      - genoscope-network
+    healthcheck:
+      test: ["CMD", "celery", "-A", "genoscope.api.celery_app", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Beat Scheduler (for periodic tasks)
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: genoscope-scheduler
+    hostname: genoscope-scheduler
+    restart: unless-stopped
+    command: >
+      sh -c "
+        echo 'Waiting for Redis...' &&
+        sleep 15 &&
+        celery -A genoscope.api.celery_app beat 
+        --loglevel=${CELERY_LOG_LEVEL:-info}
+        --schedule=/app/temp/celerybeat-schedule
+      "
+    environment:
+      <<: *common-env
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - ./src:/app/src
+      - ./notebooks:/app/notebooks
+      - ./data:/app/data
+    networks:
+      - genoscope-network
+    profiles:
+      - development
+
+  # MinIO for S3-compatible object storage (development/testing)
+  minio:
+    image: minio/minio:latest
+    container_name: genoscope-minio
+    hostname: genoscope-minio
+    restart: unless-stopped
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - genoscope-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    profiles:
+      - development
+      - testing
+
+  # Test runner service
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: genoscope-test
+    hostname: genoscope-test
+    environment:
+      <<: *common-env
+      GENOSCOPE_ENV: testing
+      LOG_LEVEL: WARNING
+      CACHE_CACHE_ENABLED: false
+      DB_DATABASE_URL: sqlite:///:memory:
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./coverage:/app/coverage
+    command: >
+      sh -c "
+        echo 'Running tests...' &&
+        python -m pytest tests/ -v --cov=src/genoscope --cov-report=html:/app/coverage/html --cov-report=xml:/app/coverage/coverage.xml --cov-report=term-missing
+      "
+    networks:
+      - genoscope-network
+    profiles:
+      - testing
+
+# =============================================================================
+# Networks
+# =============================================================================
+
+networks:
+  genoscope-network:
+    driver: bridge
+    name: genoscope-network
+
+# =============================================================================
+# Volumes
+# =============================================================================
+
+volumes:
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  minio-data:
+    driver: local
+
+# =============================================================================
+# Development Override (docker-compose.override.yml)
+# =============================================================================
+      - ./temp:/app/temp
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - genoscope-network
+
+  # =============================================================================
+  # Infrastructure Services
+  # =============================================================================
+
+  # Redis for caching and task queue
+  redis:
+    image: redis:7-alpine
+    container_name: genoscope-redis
+    hostname: genoscope-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    command: >
+      sh -c "
+        if [ -n '${REDIS_PASSWORD:-}' ]; then
+          redis-server --requirepass ${REDIS_PASSWORD}
+        else
+          redis-server
+        fi
+      "
+    volumes:
+      - redis-data:/data
+    networks:
+      - genoscope-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    sysctls:
+      - net.core.somaxconn=1024
+
+  # PostgreSQL (optional, for production)
+  postgres:
+    image: postgres:15-alpine
+    container_name: genoscope-postgres
+    hostname: genoscope-postgres
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-genoscope}
+      POSTGRES_USER: ${POSTGRES_USER:-genoscope}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-genoscope}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - genoscope-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-genoscope} -d ${POSTGRES_DB:-genoscope}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - production  # Only start in production profile
+
+  # Nginx reverse proxy (for production)
+  nginx:
+    image: nginx:alpine
+    container_name: genoscope-nginx
+    hostname: genoscope-nginx
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./logs/nginx:/var/log/nginx
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - api
+    networks:
+      - genoscope-network
+    profiles:
+      - production
+
+  # =============================================================================
+  # Monitoring and Observability
+  # =============================================================================
+
+  # Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: genoscope-prometheus
+    hostname: genoscope-prometheus
+    restart: unless-stopped
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - genoscope-network
+    profiles:
+      - monitoring
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: genoscope-grafana
+    hostname: genoscope-grafana
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - genoscope-network
+    profiles:
+      - monitoring
+
+  # =============================================================================
+  # Development and Testing Services
+  # =============================================================================
+
+  # Jupyter Lab for data analysis (development only)
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: genoscope-jupyter
+    hostname: genoscope-jupyter
+    restart: unless-stopped
+    ports:
+      - "${JUPYTER_PORT:-8888}:8888"
+    command: >
+      sh -c "
+        pip install jupyterlab ipywidgets &&
+        jupyter lab --ip=0.0.0.0 --port=8888 --no-browser 
+        --allow-root --NotebookApp.token='' 
+        --NotebookApp.password=''
+      "
+    environment:
+      <<: *common-env
+      JUPYTER_ENABLE_LAB: yes
+    volumes:
+      - ./src:/app/src

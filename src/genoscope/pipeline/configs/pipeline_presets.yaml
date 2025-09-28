@@ -1,0 +1,181 @@
+# Pipeline Configuration Presets for GenoScope
+# Different presets for various analysis types
+
+wgs:
+  name: "Whole Genome Sequencing"
+  description: "Standard WGS analysis pipeline"
+  settings:
+    alignment_tool: "bwa"
+    variant_caller: "gatk"
+    annotation_tool: "vep"
+    min_coverage: 30
+    min_base_quality: 20
+    min_mapping_quality: 20
+    min_variant_quality: 30
+    threads: 16
+    memory_gb: 32
+  filters:
+    min_depth: 10
+    min_allele_freq: 0.25
+    max_allele_freq: 0.75
+  expected_metrics:
+    target_coverage: 30
+    min_mapping_rate: 95
+    expected_variants: 3000000-4000000
+
+wes:
+  name: "Whole Exome Sequencing"
+  description: "Exome sequencing analysis pipeline"
+  settings:
+    alignment_tool: "bwa"
+    variant_caller: "gatk"
+    annotation_tool: "vep"
+    min_coverage: 100
+    min_base_quality: 20
+    min_mapping_quality: 20
+    min_variant_quality: 30
+    threads: 8
+    memory_gb: 16
+  filters:
+    min_depth: 20
+    min_allele_freq: 0.25
+    max_allele_freq: 0.75
+  regions:
+    bed_file: "exome_targets.bed"
+    padding: 100
+  expected_metrics:
+    target_coverage: 100
+    min_mapping_rate: 95
+    expected_variants: 20000-30000
+
+panel:
+  name: "Targeted Gene Panel"
+  description: "Targeted sequencing panel analysis"
+  settings:
+    alignment_tool: "bwa"
+    variant_caller: "gatk"
+    annotation_tool: "snpeff"
+    min_coverage: 500
+    min_base_quality: 20
+    min_mapping_quality: 20
+    min_variant_quality: 30
+    threads: 4
+    memory_gb: 8
+  filters:
+    min_depth: 50
+    min_allele_freq: 0.05  # Lower for detecting somatic variants
+    max_allele_freq: 0.95
+  regions:
+    bed_file: "panel_targets.bed"
+    genes: ["BRCA1", "BRCA2", "TP53", "MLH1", "MSH2"]
+  expected_metrics:
+    target_coverage: 500
+    min_mapping_rate: 98
+    expected_variants: 50-500
+
+rna_seq:
+  name: "RNA Sequencing"
+  description: "RNA-seq analysis pipeline"
+  settings:
+    alignment_tool: "star"
+    variant_caller: "gatk"
+    annotation_tool: "vep"
+    min_base_quality: 20
+    min_mapping_quality: 20
+    min_variant_quality: 30
+    threads: 16
+    memory_gb: 32
+  specific_settings:
+    use_splice_aware_aligner: true
+    quantification_tool: "salmon"
+    differential_expression: true
+  filters:
+    min_depth: 10
+    min_allele_freq: 0.25
+  expected_metrics:
+    min_mapping_rate: 85
+    expected_genes_detected: 10000-20000
+
+amplicon:
+  name: "Amplicon Sequencing"
+  description: "Amplicon-based sequencing analysis"
+  settings:
+    alignment_tool: "minimap2"
+    variant_caller: "freebayes"
+    annotation_tool: "snpeff"
+    min_coverage: 1000
+    min_base_quality: 20
+    min_mapping_quality: 10
+    min_variant_quality: 20
+    threads: 4
+    memory_gb: 8
+  filters:
+    min_depth: 100
+    min_allele_freq: 0.01  # Very low for detecting rare variants
+    max_allele_freq: 0.99
+  amplicon_specific:
+    primer_trimming: true
+    umi_deduplication: false
+  expected_metrics:
+    target_coverage: 1000
+    min_mapping_rate: 99
+    expected_variants: 10-100
+
+somatic:
+  name: "Somatic Variant Detection"
+  description: "Tumor-normal pair analysis"
+  settings:
+    alignment_tool: "bwa"
+    variant_caller: "mutect2"  # GATK Mutect2 for somatic
+    annotation_tool: "vep"
+    min_coverage: 100
+    min_base_quality: 20
+    min_mapping_quality: 20
+    min_variant_quality: 30
+    threads: 16
+    memory_gb: 32
+  filters:
+    min_tumor_depth: 20
+    min_normal_depth: 10
+    min_tumor_allele_freq: 0.05
+    max_normal_allele_freq: 0.02
+    min_tumor_lod: 6.3
+  tumor_normal_settings:
+    contamination_fraction: 0.02
+    max_population_af: 0.00001
+    germline_resource: "gnomad.vcf.gz"
+  expected_metrics:
+    expected_somatic_variants: 100-10000
+    expected_tmb: 1-20  # Tumor mutation burden per Mb
+
+clinical:
+  name: "Clinical Grade Analysis"
+  description: "High-accuracy clinical sequencing"
+  settings:
+    alignment_tool: "bwa"
+    variant_caller: "gatk"
+    annotation_tool: "vep"
+    min_coverage: 100
+    min_base_quality: 30  # Higher quality threshold
+    min_mapping_quality: 30
+    min_variant_quality: 50  # Stricter variant quality
+    threads: 16
+    memory_gb: 32
+  quality_control:
+    require_duplicate_samples: true
+    min_q30_bases: 90  # 90% bases with Q30+
+    max_contamination: 0.01
+    require_positive_control: true
+    require_negative_control: true
+  filters:
+    min_depth: 30
+    min_allele_freq: 0.35  # Stricter for clinical
+    max_allele_freq: 0.65
+    require_multiallelic_filter: true
+  validation:
+    require_orthogonal_confirmation: true
+    min_concordance: 0.99
+  expected_metrics:
+    min_coverage_uniformity: 0.95
+    min_mapping_rate: 98
+    max_false_positive_rate: 0.001

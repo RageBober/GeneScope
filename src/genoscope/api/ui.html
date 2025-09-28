@@ -1,0 +1,1548 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1220">
+  <meta name="color-scheme" content="light dark">
+  <title>GenoScope - Advanced Genomic Analysis Platform</title>
+
+  <!-- Favicons / PWA -->
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/static/favicon-helix-light.svg" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="/favicon.svg" media="(prefers-color-scheme: dark)">
+  <link rel="alternate icon" href="/favicon-32x32.png" sizes="32x32">
+  <link rel="alternate icon" href="/favicon-16x16.png" sizes="16x16">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="mask-icon" href="/static/safari-pinned-tab.svg" color="#22c55e">
+  <link rel="manifest" href="/site.webmanifest">
+
+  <style>
+    :root {
+      --bg: #0b1220;
+      --card: #111827;
+      --muted: #94a3b8;
+      --fg: #e5e7eb;
+      --accent: #22c55e;
+      --primary: #2563eb;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --success: #10b981;
+      --border: #374151;
+      --hover: #1f2937;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #ffffff;
+        --card: #f8fafc;
+        --muted: #64748b;
+        --fg: #1e293b;
+        --border: #e2e8f0;
+        --hover: #f1f5f9;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 14px/1.6 system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .logo::before {
+      content: "🧬";
+      font-size: 32px;
+    }
+
+    .nav {
+      display: flex;
+      gap: 8px;
+    }
+
+    .nav-link {
+      padding: 8px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--muted);
+      transition: all 0.2s;
+    }
+
+    .nav-link:hover {
+      color: var(--fg);
+      background: var(--hover);
+    }
+
+    /* Layout */
+    .grid {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 968px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .main {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      transition: all 0.2s;
+    }
+
+    .card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 4px 20px rgba(34, 197, 94, 0.1);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .card-subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      background: var(--hover);
+      border-radius: 10px;
+      padding: 4px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .tab.active {
+      background: var(--bg);
+      color: var(--fg);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .tab:hover:not(.active) {
+      color: var(--fg);
+    }
+
+    /* Forms */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+    }
+
+    /* File input styling */
+    .file-input {
+      position: relative;
+      display: block;
+      width: 100%;
+    }
+
+    .file-input input[type="file"] {
+      position: absolute;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .file-input-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      background: var(--hover);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .file-input:hover .file-input-label {
+      border-color: var(--accent);
+      background: rgba(34, 197, 94, 0.05);
+      color: var(--accent);
+    }
+
+    .file-input.has-file .file-input-label {
+      border-color: var(--success);
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--hover);
+      color: var(--fg);
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .btn:hover {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: white;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+      border-color: #1d4ed8;
+    }
+
+    .btn-success {
+      background: var(--success);
+      border-color: var(--success);
+      color: white;
+    }
+
+    .btn-warning {
+      background: var(--warning);
+      border-color: var(--warning);
+      color: white;
+    }
+
+    .btn-error {
+      background: var(--error);
+      border-color: var(--error);
+      color: white;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Status indicators */
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-ready {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+    }
+
+    .status-processing {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--warning);
+    }
+
+    .status-error {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--error);
+    }
+
+    .status::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status-processing::before {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    /* Messages */
+    .message {
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message-success {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .message-error {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: var(--error);
+      color: var(--error);
+    }
+
+    /* Progress bar */
+    .progress {
+      width: 100%;
+      height: 8px;
+      background: var(--hover);
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 8px 0;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--primary));
+      border-radius: 4px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    /* Table styling */
+    .table-container {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--card);
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    th {
+      background: var(--hover);
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tr:hover {
+      background: var(--hover);
+    }
+
+    /* Animations */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    /* Utilities */
+    .hidden { display: none !important; }
+    .text-muted { color: var(--muted); }
+    .text-success { color: var(--success); }
+    .text-error { color: var(--error); }
+    .text-warning { color: var(--warning); }
+    .text-center { text-align: center; }
+    .mt-2 { margin-top: 8px; }
+    .mb-2 { margin-bottom: 8px; }
+    .p-2 { padding: 8px; }
+
+    /* Loading spinner */
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-top: 2px solid var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Feature cards */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .feature-card {
+      padding: 20px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--card);
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .feature-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(34, 197, 94, 0.1);
+    }
+
+    .feature-icon {
+      font-size: 24px;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .feature-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .feature-description {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo">GenoScope</div>
+      <nav class="nav">
+        <a href="#" class="nav-link" onclick="showSection('analysis')">Analysis</a>
+        <a href="#" class="nav-link" onclick="showSection('results')">Results</a>
+        <a href="#" class="nav-link" onclick="showSection('help')">Help</a>
+        <a href="/docs" class="nav-link">API Docs</a>
+      </nav>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="grid">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <!-- Quick Actions -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Quick Actions</h3>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button class="btn btn-primary" onclick="showSection('analysis')">
+              <span>🧬</span> New Analysis
+            </button>
+            <button class="btn" onclick="showSection('results')">
+              <span>📊</span> View Results
+            </button>
+            <button class="btn" onclick="loadExample()">
+              <span>🎯</span> Load Example
+            </button>
+          </div>
+        </div>
+
+        <!-- Status Panel -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">System Status</h3>
+          </div>
+          <div id="status-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span>API Server</span>
+              <span class="status status-ready" id="api-status">Ready</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span>Database</span>
+              <span class="status status-ready" id="db-status">Connected</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span>Cache</span>
+              <span class="status status-ready" id="cache-status">Active</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Files -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Recent Files</h3>
+          </div>
+          <div id="recent-files">
+            <p class="text-muted">No recent files</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="main">
+        <!-- Analysis Section -->
+        <div id="analysis-section" class="section">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Genomic Data Analysis</h2>
+              <p class="card-subtitle">Upload and analyze genomic data files with advanced bioinformatics tools</p>
+            </div>
+
+            <!-- Analysis Mode Tabs -->
+            <div class="tabs">
+              <button class="tab active" onclick="switchMode('simple')">Simple Analysis</button>
+              <button class="tab" onclick="switchMode('advanced')">Advanced Options</button>
+              <button class="tab" onclick="switchMode('batch')">Batch Processing</button>
+            </div>
+
+            <!-- Simple Analysis Mode -->
+            <div id="simple-mode" class="mode-panel">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="simple-file">Select Genomic Data File</label>
+                  <div class="file-input" id="simple-file-input">
+                    <input type="file" id="simple-file" accept=".csv,.tsv,.vcf,.xlsx,.parquet,.bam,.fasta,.gff,.hdf5" onchange="handleFileSelect(this, 'simple')">
+                    <div class="file-input-label">
+                      <div>
+                        <div style="font-size: 24px; margin-bottom: 8px;">📁</div>
+                        <div>Click to select file or drag & drop</div>
+                        <div class="text-muted" style="margin-top: 4px;">Supports: VCF, BAM, CSV, TSV, FASTA, GFF, HDF5</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="simple-preset">Analysis Preset</label>
+                  <select id="simple-preset">
+                    <option value="rare_monogenic">Rare Monogenic Diseases</option>
+                    <option value="oncology">Oncology Panel</option>
+                    <option value="pharmacogenomics">Pharmacogenomics</option>
+                    <option value="population">Population Genetics</option>
+                    <option value="custom">Custom Analysis</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="simple-format">Output Format</label>
+                  <select id="simple-format">
+                    <option value="html">HTML Report</option>
+                    <option value="pdf">PDF Report</option>
+                    <option value="csv">CSV Data</option>
+                    <option value="json">JSON Data</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <button class="btn btn-primary" onclick="startSimpleAnalysis()" id="simple-analyze-btn">
+                  <span>🚀</span> Start Analysis
+                </button>
+              </div>
+            </div>
+
+            <!-- Advanced Analysis Mode -->
+            <div id="advanced-mode" class="mode-panel hidden">
+              <div class="form-group">
+                <label for="advanced-file">Select Data File</label>
+                <div class="file-input" id="advanced-file-input">
+                  <input type="file" id="advanced-file" accept=".csv,.tsv,.vcf,.xlsx,.parquet,.bam,.fasta,.gff,.hdf5" onchange="handleFileSelect(this, 'advanced')">
+                  <div class="file-input-label">
+                    <div>
+                      <div style="font-size: 24px; margin-bottom: 8px;">📁</div>
+                      <div>Click to select file or drag & drop</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="advanced-preset">Base Preset (Optional)</label>
+                  <select id="advanced-preset">
+                    <option value="">No Preset</option>
+                    <option value="rare_monogenic">Rare Monogenic</option>
+                    <option value="oncology">Oncology</option>
+                    <option value="pharmacogenomics">Pharmacogenomics</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="advanced-limit">Preview Limit</label>
+                  <input type="number" id="advanced-limit" value="50" min="1" max="1000">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="min-af">Minimum Allele Frequency</label>
+                  <input type="number" id="min-af" step="0.0001" min="0" max="1" placeholder="e.g. 0.01">
+                </div>
+                <div class="form-group">
+                  <label for="max-af">Maximum Allele Frequency</label>
+                  <input type="number" id="max-af" step="0.0001" min="0" max="1" placeholder="e.g. 0.99">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="min-qual">Minimum Quality Score</label>
+                  <input type="number" id="min-qual" min="0" placeholder="e.g. 30">
+                </div>
+                <div class="form-group">
+                  <label for="genes">Target Genes (comma-separated)</label>
+                  <input type="text" id="genes" placeholder="e.g. BRCA1,TP53,EGFR">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="chromosomes">Chromosomes (comma-separated)</label>
+                  <input type="text" id="chromosomes" placeholder="e.g. 1,2,X,Y">
+                </div>
+                <div class="form-group">
+                  <label for="analysis-type">Analysis Type</label>
+                  <select id="analysis-type">
+                    <option value="variants">Variant Analysis</option>
+                    <option value="expression">Expression Analysis</option>
+                    <option value="cnv">Copy Number Variation</option>
+                    <option value="structural">Structural Variants</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <button class="btn btn-primary" onclick="startAdvancedAnalysis()" id="advanced-analyze-btn">
+                  <span>🔬</span> Run Advanced Analysis
+                </button>
+              </div>
+            </div>
+
+            <!-- Batch Processing Mode -->
+            <div id="batch-mode" class="mode-panel hidden">
+              <div class="form-group">
+                <label>Select Multiple Files</label>
+                <div class="file-input" id="batch-file-input">
+                  <input type="file" id="batch-files" multiple accept=".csv,.tsv,.vcf,.xlsx,.parquet,.bam,.fasta,.gff,.hdf5" onchange="handleBatchFileSelect(this)">
+                  <div class="file-input-label">
+                    <div>
+                      <div style="font-size: 24px; margin-bottom: 8px;">📚</div>
+                      <div>Select multiple files for batch processing</div>
+                      <div class="text-muted" style="margin-top: 4px;">Hold Ctrl/Cmd to select multiple files</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="batch-file-list" class="hidden">
+                <h4>Selected Files:</h4>
+                <div id="file-list-container"></div>
+              </div>
+
+              <div class="form-group">
+                <label for="batch-preset">Batch Analysis Preset</label>
+                <select id="batch-preset">
+                  <option value="rare_monogenic">Rare Monogenic</option>
+                  <option value="oncology">Oncology</option>
+                  <option value="pharmacogenomics">Pharmacogenomics</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <button class="btn btn-primary" onclick="startBatchAnalysis()" id="batch-analyze-btn">
+                  <span>⚡</span> Process Batch
+                </button>
+              </div>
+            </div>
+
+            <!-- Progress Section -->
+            <div id="progress-section" class="hidden">
+              <h3>Analysis Progress</h3>
+              <div class="progress">
+                <div class="progress-bar" id="analysis-progress"></div>
+              </div>
+              <div id="progress-status" class="text-muted">Initializing...</div>
+            </div>
+
+            <!-- Messages -->
+            <div id="analysis-message" class="message"></div>
+          </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results-section" class="section hidden">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Analysis Results</h2>
+              <p class="card-subtitle">View and download your genomic analysis results</p>
+            </div>
+
+            <div id="results-content">
+              <div class="text-center text-muted" style="padding: 40px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                <div>No analysis results available</div>
+                <div style="margin-top: 8px;">Run an analysis to see results here</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Help Section -->
+        <div id="help-section" class="section hidden">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Help & Documentation</h2>
+              <p class="card-subtitle">Learn how to use GenoScope effectively</p>
+            </div>
+
+            <div class="feature-grid">
+              <div class="feature-card">
+                <span class="feature-icon">🧬</span>
+                <div class="feature-title">Supported File Formats</div>
+                <div class="feature-description">
+                  VCF, BAM, CSV, TSV, FASTA, GFF, HDF5, Excel files. Upload single files or process in batches.
+                </div>
+              </div>
+
+              <div class="feature-card">
+                <span class="feature-icon">🎯</span>
+                <div class="feature-title">Analysis Presets</div>
+                <div class="feature-description">
+                  Pre-configured analysis pipelines for rare diseases, oncology, and pharmacogenomics research.
+                </div>
+              </div>
+
+              <div class="feature-card">
+                <span class="feature-icon">📊</span>
+                <div class="feature-title">Interactive Reports</div>
+                <div class="feature-description">
+                  Generate comprehensive HTML/PDF reports with interactive visualizations and detailed statistics.
+                </div>
+              </div>
+
+              <div class="feature-card">
+                <span class="feature-icon">🔬</span>
+                <div class="feature-title">Advanced Filtering</div>
+                <div class="feature-description">
+                  Filter variants by allele frequency, quality scores, genes, chromosomes, and custom criteria.
+                </div>
+              </div>
+
+              <div class="feature-card">
+                <span class="feature-icon">⚡</span>
+                <div class="feature-title">Batch Processing</div>
+                <div class="feature-description">
+                  Process multiple files simultaneously with consistent parameters and automated reporting.
+                </div>
+              </div>
+
+              <div class="feature-card">
+                <span class="feature-icon">🔗</span>
+                <div class="feature-title">API Access</div>
+                <div class="feature-description">
+                  Programmatic access via REST API for integration with your bioinformatics workflows.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global state
+    let currentMode = 'simple';
+    let currentSection = 'analysis';
+    let analysisInProgress = false;
+
+    // Initialize application
+    document.addEventListener('DOMContentLoaded', function() {
+      checkSystemHealth();
+      loadRecentFiles();
+      setupDragAndDrop();
+    });
+
+    // Section management
+    function showSection(sectionId) {
+      // Hide all sections
+      document.querySelectorAll('.section').forEach(section => {
+        section.classList.add('hidden');
+      });
+
+      // Show target section
+      document.getElementById(sectionId + '-section').classList.remove('hidden');
+      
+      // Update nav
+      document.querySelectorAll('.nav-link').forEach(link => {
+        link.style.color = 'var(--muted)';
+      });
+      event.target.style.color = 'var(--fg)';
+      
+      currentSection = sectionId;
+    }
+
+    // Mode switching
+    function switchMode(mode) {
+      // Hide all mode panels
+      document.querySelectorAll('.mode-panel').forEach(panel => {
+        panel.classList.add('hidden');
+      });
+      
+      // Show selected mode
+      document.getElementById(mode + '-mode').classList.remove('hidden');
+      
+      // Update tabs
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      
+      currentMode = mode;
+    }
+
+    // File selection handling
+    function handleFileSelect(input, mode) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const fileInput = document.getElementById(mode + '-file-input');
+      fileInput.classList.add('has-file');
+      
+      const label = fileInput.querySelector('.file-input-label div');
+      label.innerHTML = `
+        <div style="font-size: 24px; margin-bottom: 8px;">📄</div>
+        <div style="font-weight: 600;">${file.name}</div>
+        <div class="text-muted" style="margin-top: 4px;">${formatFileSize(file.size)}</div>
+      `;
+
+      // Validate file
+      if (!validateFile(file)) {
+        showMessage('Invalid file type. Please select a supported genomic data file.', 'error');
+        return;
+      }
+
+      // Auto-detect analysis type based on file extension
+      autoDetectAnalysisType(file.name);
+    }
+
+    function handleBatchFileSelect(input) {
+      const files = Array.from(input.files);
+      if (!files.length) return;
+
+      const fileListContainer = document.getElementById('file-list-container');
+      const batchFileList = document.getElementById('batch-file-list');
+      
+      fileListContainer.innerHTML = '';
+      files.forEach((file, index) => {
+        const fileItem = document.createElement('div');
+        fileItem.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 8px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 4px;';
+        fileItem.innerHTML = `
+          <span>${file.name}</span>
+          <span class="text-muted">${formatFileSize(file.size)}</span>
+        `;
+        fileListContainer.appendChild(fileItem);
+      });
+
+      batchFileList.classList.remove('hidden');
+    }
+
+    // Drag and drop functionality
+    function setupDragAndDrop() {
+      const fileInputs = document.querySelectorAll('.file-input');
+      
+      fileInputs.forEach(fileInput => {
+        const label = fileInput.querySelector('.file-input-label');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+          label.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+          label.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+          label.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+          label.style.borderColor = 'var(--accent)';
+          label.style.backgroundColor = 'rgba(34, 197, 94, 0.05)';
+        }
+
+        function unhighlight(e) {
+          label.style.borderColor = 'var(--border)';
+          label.style.backgroundColor = 'var(--hover)';
+        }
+
+        label.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+          const dt = e.dataTransfer;
+          const files = dt.files;
+          const input = fileInput.querySelector('input[type="file"]');
+          input.files = files;
+          
+          // Trigger change event
+          const event = new Event('change', { bubbles: true });
+          input.dispatchEvent(event);
+        }
+      });
+    }
+
+    // Analysis functions
+    async function startSimpleAnalysis() {
+      const fileInput = document.getElementById('simple-file');
+      const preset = document.getElementById('simple-preset').value;
+      const format = document.getElementById('simple-format').value;
+
+      if (!fileInput.files[0]) {
+        showMessage('Please select a file first.', 'error');
+        return;
+      }
+
+      setAnalysisInProgress(true);
+      showProgressSection();
+
+      try {
+        // Upload file
+        updateProgress(20, 'Uploading file...');
+        const datasetId = await uploadFile(fileInput.files[0]);
+
+        // Run analysis
+        updateProgress(60, 'Running analysis...');
+        const result = await runAnalysis(datasetId, {
+          preset: preset,
+          limit: 100,
+          create_report: true,
+          locale: 'en',
+          format: format
+        });
+
+        // Show results
+        updateProgress(100, 'Analysis complete!');
+        showAnalysisResults(result);
+        
+        setTimeout(() => {
+          hideProgressSection();
+          showSection('results');
+        }, 1500);
+
+      } catch (error) {
+        console.error('Analysis failed:', error);
+        showMessage(`Analysis failed: ${error.message}`, 'error');
+        updateProgress(0, 'Analysis failed');
+        setTimeout(hideProgressSection, 2000);
+      } finally {
+        setAnalysisInProgress(false);
+      }
+    }
+
+    async function startAdvancedAnalysis() {
+      const fileInput = document.getElementById('advanced-file');
+      if (!fileInput.files[0]) {
+        showMessage('Please select a file first.', 'error');
+        return;
+      }
+
+      const params = {
+        preset: document.getElementById('advanced-preset').value || null,
+        min_af: parseFloat(document.getElementById('min-af').value) || null,
+        max_af: parseFloat(document.getElementById('max-af').value) || null,
+        min_qual: parseFloat(document.getElementById('min-qual').value) || null,
+        genes: parseList(document.getElementById('genes').value),
+        chroms: parseList(document.getElementById('chromosomes').value),
+        limit: parseInt(document.getElementById('advanced-limit').value) || 50,
+        create_report: true,
+        locale: 'en'
+      };
+
+      setAnalysisInProgress(true);
+      showProgressSection();
+
+      try {
+        updateProgress(20, 'Uploading file...');
+        const datasetId = await uploadFile(fileInput.files[0]);
+
+        updateProgress(60, 'Running advanced analysis...');
+        const result = await runAnalysis(datasetId, params);
+
+        updateProgress(100, 'Analysis complete!');
+        showAnalysisResults(result);
+        
+        setTimeout(() => {
+          hideProgressSection();
+          showSection('results');
+        }, 1500);
+
+      } catch (error) {
+        console.error('Analysis failed:', error);
+        showMessage(`Analysis failed: ${error.message}`, 'error');
+        updateProgress(0, 'Analysis failed');
+        setTimeout(hideProgressSection, 2000);
+      } finally {
+        setAnalysisInProgress(false);
+      }
+    }
+
+    async function startBatchAnalysis() {
+      const filesInput = document.getElementById('batch-files');
+      const preset = document.getElementById('batch-preset').value;
+
+      if (!filesInput.files.length) {
+        showMessage('Please select files first.', 'error');
+        return;
+      }
+
+      setAnalysisInProgress(true);
+      showProgressSection();
+
+      try {
+        const files = Array.from(filesInput.files);
+        const results = [];
+
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const progress = ((i + 1) / files.length) * 100;
+          
+          updateProgress(progress, `Processing ${file.name}...`);
+          
+          const datasetId = await uploadFile(file);
+          const result = await runAnalysis(datasetId, {
+            preset: preset,
+            limit: 50,
+            create_report: true,
+            locale: 'en'
+          });
+
+          results.push({ file: file.name, result });
+        }
+
+        updateProgress(100, 'Batch processing complete!');
+        showBatchResults(results);
+        
+        setTimeout(() => {
+          hideProgressSection();
+          showSection('results');
+        }, 1500);
+
+      } catch (error) {
+        console.error('Batch analysis failed:', error);
+        showMessage(`Batch analysis failed: ${error.message}`, 'error');
+        updateProgress(0, 'Batch analysis failed');
+        setTimeout(hideProgressSection, 2000);
+      } finally {
+        setAnalysisInProgress(false);
+      }
+    }
+
+    // API functions
+    async function uploadFile(file) {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/datasets/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.dataset_id;
+    }
+
+    async function runAnalysis(datasetId, params) {
+      const searchParams = new URLSearchParams();
+      searchParams.set('dataset_id', datasetId);
+
+      Object.entries(params).forEach(([key, value]) => {
+        if (value === null || value === undefined || value === '') return;
+        
+        if (Array.isArray(value)) {
+          value.filter(Boolean).forEach(v => searchParams.append(key, v));
+        } else {
+          searchParams.set(key, value);
+        }
+      });
+
+      const response = await fetch(`/variants/filter?${searchParams.toString()}`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        throw new Error(`Analysis failed: ${response.status}`);
+      }
+
+      return await response.json();
+    }
+
+    // UI helper functions
+    function showMessage(message, type = 'error') {
+      const messageEl = document.getElementById('analysis-message');
+      messageEl.className = `message message-${type} show fade-in`;
+      messageEl.innerHTML = message;
+      
+      setTimeout(() => {
+        messageEl.classList.remove('show');
+      }, 5000);
+    }
+
+    function setAnalysisInProgress(inProgress) {
+      analysisInProgress = inProgress;
+      const buttons = document.querySelectorAll('[id$="-analyze-btn"]');
+      buttons.forEach(btn => {
+        btn.disabled = inProgress;
+        if (inProgress) {
+          btn.innerHTML = '<div class="spinner"></div> Processing...';
+        } else {
+          btn.innerHTML = btn.id.includes('simple') ? '<span>🚀</span> Start Analysis' :
+                         btn.id.includes('advanced') ? '<span>🔬</span> Run Advanced Analysis' :
+                         '<span>⚡</span> Process Batch';
+        }
+      });
+    }
+
+    function showProgressSection() {
+      document.getElementById('progress-section').classList.remove('hidden');
+    }
+
+    function hideProgressSection() {
+      document.getElementById('progress-section').classList.add('hidden');
+    }
+
+    function updateProgress(percent, status) {
+      document.getElementById('analysis-progress').style.width = percent + '%';
+      document.getElementById('progress-status').textContent = status;
+    }
+
+    function showAnalysisResults(result) {
+      const resultsContent = document.getElementById('results-content');
+      
+      const html = `
+        <div class="fade-in">
+          <div class="card-header">
+            <h3>Analysis Complete</h3>
+            <div class="status status-ready">Success</div>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <div class="card" style="text-align: center;">
+              <div style="font-size: 24px; font-weight: 600; color: var(--primary);">${result.total}</div>
+              <div class="text-muted">Total Variants</div>
+            </div>
+            <div class="card" style="text-align: center;">
+              <div style="font-size: 24px; font-weight: 600; color: var(--success);">${result.preview ? result.preview.length : 0}</div>
+              <div class="text-muted">Previewed</div>
+            </div>
+            <div class="card" style="text-align: center;">
+              <div style="font-size: 24px; font-weight: 600; color: var(--accent);">${result.applied ? result.applied.length : 0}</div>
+              <div class="text-muted">Filters Applied</div>
+            </div>
+          </div>
+
+          ${result.report_id ? `
+            <div class="card" style="background: linear-gradient(135deg, var(--success), var(--accent)); color: white; margin-bottom: 24px;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                  <h4 style="margin: 0; color: white;">Report Generated</h4>
+                  <p style="margin: 4px 0 0; opacity: 0.9;">Your comprehensive analysis report is ready for download</p>
+                </div>
+                <a href="/report/${result.report_id}" class="btn" style="background: white; color: var(--success); border: none;">
+                  <span>📄</span> Download Report
+                </a>
+              </div>
+            </div>
+          ` : ''}
+
+          ${result.preview && result.preview.length > 0 ? `
+            <div class="card">
+              <h4>Data Preview</h4>
+              <div class="table-container">
+                ${generateTable(result.preview)}
+              </div>
+            </div>
+          ` : ''}
+
+          ${result.applied && result.applied.length > 0 ? `
+            <div class="card">
+              <h4>Applied Filters</h4>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                ${result.applied.map(filter => `
+                  <div style="padding: 12px; background: var(--hover); border-radius: 8px;">
+                    <div style="font-weight: 600;">${filter.name}</div>
+                    <div class="text-muted">${filter.source} (${filter.version})</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+      
+      resultsContent.innerHTML = html;
+    }
+
+    function showBatchResults(results) {
+      const resultsContent = document.getElementById('results-content');
+      
+      const html = `
+        <div class="fade-in">
+          <div class="card-header">
+            <h3>Batch Processing Complete</h3>
+            <div class="status status-ready">Success</div>
+          </div>
+          
+          <div class="card" style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; margin-bottom: 24px;">
+            <div style="text-align: center;">
+              <div style="font-size: 48px; margin-bottom: 8px;">⚡</div>
+              <h4 style="margin: 0; color: white;">Processed ${results.length} Files</h4>
+              <p style="margin: 8px 0 0; opacity: 0.9;">All files have been analyzed successfully</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <h4>Batch Results</h4>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              ${results.map((item, index) => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; background: var(--hover); border-radius: 8px;">
+                  <div>
+                    <div style="font-weight: 600;">${item.file}</div>
+                    <div class="text-muted">${item.result.total} variants found</div>
+                  </div>
+                  <div style="display: flex; gap: 8px;">
+                    ${item.result.report_id ? `
+                      <a href="/report/${item.result.report_id}" class="btn" style="padding: 6px 12px; font-size: 12px;">
+                        📄 Report
+                      </a>
+                    ` : ''}
+                    <span class="status status-ready">Complete</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+      
+      resultsContent.innerHTML = html;
+    }
+
+    function generateTable(data) {
+      if (!data || data.length === 0) return '<p class="text-muted">No data to display</p>';
+      
+      const columns = Object.keys(data[0]);
+      
+      return `
+        <table>
+          <thead>
+            <tr>
+              ${columns.map(col => `<th>${col}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map(row => `
+              <tr>
+                ${columns.map(col => `<td>${row[col] || ''}</td>`).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    // Utility functions
+    function validateFile(file) {
+      const allowedExtensions = ['.csv', '.tsv', '.vcf', '.xlsx', '.xls', '.parquet', '.bam', '.fasta', '.gff', '.hdf5', '.json'];
+      const extension = '.' + file.name.split('.').pop().toLowerCase();
+      return allowedExtensions.includes(extension);
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function parseList(value) {
+      return value ? value.split(',').map(s => s.trim()).filter(Boolean) : [];
+    }
+
+    function autoDetectAnalysisType(filename) {
+      const extension = filename.toLowerCase().split('.').pop();
+      const analysisSelect = document.getElementById('analysis-type');
+      
+      if (!analysisSelect) return;
+      
+      const typeMap = {
+        'vcf': 'variants',
+        'bam': 'variants',
+        'csv': 'expression',
+        'tsv': 'expression',
+        'xlsx': 'expression',
+        'gff': 'structural'
+      };
+      
+      if (typeMap[extension]) {
+        analysisSelect.value = typeMap[extension];
+      }
+    }
+
+    // System health check
+    async function checkSystemHealth() {
+      try {
+        const response = await fetch('/health');
+        const health = await response.json();
+        
+        updateStatusIndicator('api-status', 'ready', 'Ready');
+        updateStatusIndicator('db-status', health.db ? 'ready' : 'error', health.db ? 'Connected' : 'Error');
+        updateStatusIndicator('cache-status', health.celery ? 'ready' : 'warning', health.celery ? 'Active' : 'Offline');
+        
+      } catch (error) {
+        console.error('Health check failed:', error);
+        updateStatusIndicator('api-status', 'error', 'Error');
+        updateStatusIndicator('db-status', 'error', 'Error');
+        updateStatusIndicator('cache-status', 'error', 'Error');
+      }
+    }
+
+    function updateStatusIndicator(id, status, text) {
+      const element = document.getElementById(id);
+      element.className = `status status-${status}`;
+      element.textContent = text;
+    }
+
+    // Load recent files (placeholder)
+    function loadRecentFiles() {
+      const recentFilesEl = document.getElementById('recent-files');
+      // This would normally load from localStorage or API
+      recentFilesEl.innerHTML = '<p class="text-muted">No recent files</p>';
+    }
+
+    // Load example data
+    async function loadExample() {
+      try {
+        showMessage('Loading example dataset...', 'success');
+        
+        // Simulate loading example data
+        setTimeout(() => {
+          document.getElementById('simple-preset').value = 'rare_monogenic';
+          showMessage('Example dataset loaded! You can now run the analysis.', 'success');
+        }, 1000);
+        
+      } catch (error) {
+        showMessage('Failed to load example dataset.', 'error');
+      }
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+          case 'o':
+            e.preventDefault();
+            document.getElementById('simple-file').click();
+            break;
+          case 'Enter':
+            e.preventDefault();
+            if (currentSection === 'analysis' && !analysisInProgress) {
+              if (currentMode === 'simple') {
+                startSimpleAnalysis();
+              } else if (currentMode === 'advanced') {
+                startAdvancedAnalysis();
+              }
+            }
+            break;
+        }
+      }
+    });
+
+    // Auto-save form data to localStorage
+    function autoSaveFormData() {
+      const formInputs = document.querySelectorAll('input, select');
+      formInputs.forEach(input => {
+        input.addEventListener('change', function() {
+          localStorage.setItem(`genoscope_${this.id}`, this.value);
+        });
+        
+        // Restore saved values
+        const savedValue = localStorage.getItem(`genoscope_${input.id}`);
+        if (savedValue) {
+          input.value = savedValue;
+        }
+      });
+    }
+
+    // Initialize auto-save
+    document.addEventListener('DOMContentLoaded', function() {
+      autoSaveFormData();
+    });
+
+    // Performance monitoring
+    function trackAnalysisTime(startTime, endTime, analysisType) {
+      const duration = endTime - startTime;
+      console.log(`Analysis completed in ${duration}ms (${analysisType})`);
+      
+      // Could send analytics data here
+      if (window.gtag) {
+        gtag('event', 'analysis_complete', {
+          event_category: 'analysis',
+          event_label: analysisType,
+          value: Math.round(duration / 1000)
+        });
+      }
+    }
+
+    // Error handling
+    window.addEventListener('error', function(e) {
+      console.error('Application error:', e.error);
+      showMessage('An unexpected error occurred. Please try again.', 'error');
+    });
+
+    window.addEventListener('unhandledrejection', function(e) {
+      console.error('Unhandled promise rejection:', e.reason);
+      showMessage('A network or processing error occurred.', 'error');
+    });
+
+    // Check for updates (in a real app)
+    function checkForUpdates() {
+      // This would check for application updates
+      console.log('Checking for updates...');
+    }
+
+    // Initialize update check
+    setTimeout(checkForUpdates, 5000);
+
+  </script>
+</body>
+</html>

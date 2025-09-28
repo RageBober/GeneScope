@@ -1,0 +1,323 @@
+# Tool Paths Configuration for GenoScope
+# Defines paths to bioinformatics tools
+
+# Tool discovery settings
+discovery:
+  search_paths:
+    - "/usr/local/bin"
+    - "/usr/bin"
+    - "/opt/conda/bin"
+    - "${HOME}/miniconda3/bin"
+    - "${HOME}/.local/bin"
+    - "/opt/tools"
+  use_system_path: true
+  auto_discover: true
+
+# Quality Control Tools
+qc_tools:
+  fastqc:
+    executable: "fastqc"
+    version_flag: "--version"
+    min_version: "0.11.9"
+    install_cmd: "conda install -c bioconda fastqc"
+    
+  fastp:
+    executable: "fastp"
+    version_flag: "--version"
+    min_version: "0.23.0"
+    install_cmd: "conda install -c bioconda fastp"
+    
+  trimmomatic:
+    executable: "trimmomatic"
+    jar_path: "/opt/Trimmomatic-0.39/trimmomatic-0.39.jar"
+    java_cmd: "java -jar"
+    min_version: "0.39"
+    install_cmd: "conda install -c bioconda trimmomatic"
+    
+  multiqc:
+    executable: "multiqc"
+    version_flag: "--version"
+    min_version: "1.14"
+    install_cmd: "pip install multiqc"
+
+# Alignment Tools
+alignment_tools:
+  bwa:
+    executable: "bwa"
+    version_flag: ""  # BWA shows version without flag
+    min_version: "0.7.17"
+    install_cmd: "conda install -c bioconda bwa"
+    subcommands:
+      index: "index"
+      mem: "mem"
+      aln: "aln"
+      sampe: "sampe"
+      samse: "samse"
+    
+  minimap2:
+    executable: "minimap2"
+    version_flag: "--version"
+    min_version: "2.24"
+    install_cmd: "conda install -c bioconda minimap2"
+    presets:
+      illumina: "sr"
+      ont: "map-ont"
+      pacbio: "map-pb"
+      asm: "asm20"
+    
+  bowtie2:
+    executable: "bowtie2"
+    version_flag: "--version"
+    min_version: "2.4.5"
+    install_cmd: "conda install -c bioconda bowtie2"
+    
+  star:
+    executable: "STAR"
+    version_flag: "--version"
+    min_version: "2.7.10"
+    install_cmd: "conda install -c bioconda star"
+    
+  hisat2:
+    executable: "hisat2"
+    version_flag: "--version"
+    min_version: "2.2.1"
+    install_cmd: "conda install -c bioconda hisat2"
+
+# SAM/BAM Tools
+samtools:
+  executable: "samtools"
+  version_flag: "--version"
+  min_version: "1.17"
+  install_cmd: "conda install -c bioconda samtools"
+  subcommands:
+    view: "view"
+    sort: "sort"
+    index: "index"
+    flagstat: "flagstat"
+    depth: "depth"
+    mpileup: "mpileup"
+    merge: "merge"
+    markdup: "markdup"
+
+# Variant Calling Tools
+variant_callers:
+  gatk:
+    executable: "gatk"
+    version_flag: "--version"
+    min_version: "4.4.0"
+    install_cmd: "conda install -c bioconda gatk4"
+    java_options: "-Xmx4G"
+    tools:
+      haplotype_caller: "HaplotypeCaller"
+      mutect2: "Mutect2"
+      variant_recalibrator: "VariantRecalibrator"
+      apply_vqsr: "ApplyVQSR"
+      base_recalibrator: "BaseRecalibrator"
+      apply_bqsr: "ApplyBQSR"
+    
+  bcftools:
+    executable: "bcftools"
+    version_flag: "--version"
+    min_version: "1.17"
+    install_cmd: "conda install -c bioconda bcftools"
+    subcommands:
+      mpileup: "mpileup"
+      call: "call"
+      filter: "filter"
+      merge: "merge"
+      index: "index"
+      stats: "stats"
+      view: "view"
+    
+  freebayes:
+    executable: "freebayes"
+    version_flag: "--version"
+    min_version: "1.3.6"
+    install_cmd: "conda install -c bioconda freebayes"
+    
+  deepvariant:
+    executable: "run_deepvariant"
+    docker_image: "google/deepvariant:1.5.0"
+    singularity_image: "docker://google/deepvariant:1.5.0"
+    min_version: "1.5.0"
+    
+  strelka2:
+    executable: "configureStrelkaSomaticWorkflow.py"
+    install_path: "/opt/strelka2/bin"
+    min_version: "2.9.10"
+    install_cmd: "conda install -c bioconda strelka"
+    
+  varscan:
+    jar_path: "/opt/VarScan.v2.4.5.jar"
+    java_cmd: "java -jar"
+    min_version: "2.4.5"
+    install_cmd: "conda install -c bioconda varscan"
+
+# Annotation Tools
+annotation_tools:
+  vep:
+    executable: "vep"
+    version_flag: "--help"  # VEP shows version in help
+    min_version: "110"
+    install_cmd: "conda install -c bioconda ensembl-vep"
+    cache_dir: "${HOME}/.vep"
+    plugins:
+      - "CADD"
+      - "REVEL"
+      - "SpliceAI"
+      - "AlphaMissense"
+    
+  snpeff:
+    jar_path: "/opt/snpEff/snpEff.jar"
+    java_cmd: "java -jar"
+    min_version: "5.1"
+    install_cmd: "conda install -c bioconda snpeff"
+    config_file: "/opt/snpEff/snpEff.config"
+    data_dir: "${HOME}/.snpeff/data"
+    
+  annovar:
+    executable: "annotate_variation.pl"
+    install_path: "/opt/annovar"
+    min_version: "2020Jun08"
+    db_dir: "/opt/annovar/humandb"
+
+# Coverage and QC Tools
+coverage_tools:
+  bedtools:
+    executable: "bedtools"
+    version_flag: "--version"
+    min_version: "2.30.0"
+    install_cmd: "conda install -c bioconda bedtools"
+    
+  mosdepth:
+    executable: "mosdepth"
+    version_flag: "--version"
+    min_version: "0.3.3"
+    install_cmd: "conda install -c bioconda mosdepth"
+    
+  qualimap:
+    executable: "qualimap"
+    version_flag: "--version"
+    min_version: "2.2.2"
+    install_cmd: "conda install -c bioconda qualimap"
+
+# Structural Variant Tools
+sv_tools:
+  manta:
+    executable: "configManta.py"
+    install_path: "/opt/manta/bin"
+    min_version: "1.6.0"
+    install_cmd: "conda install -c bioconda manta"
+    
+  delly:
+    executable: "delly"
+    version_flag: "--version"
+    min_version: "1.1.6"
+    install_cmd: "conda install -c bioconda delly"
+    
+  lumpy:
+    executable: "lumpy"
+    version_flag: ""
+    min_version: "0.3.1"
+    install_cmd: "conda install -c bioconda lumpy-sv"
+
+# CNV Tools
+cnv_tools:
+  cnvkit:
+    executable: "cnvkit.py"
+    version_flag: "version"
+    min_version: "0.9.10"
+    install_cmd: "pip install cnvkit"
+    
+  gatk_cnv:
+    use_gatk: true
+    tools:
+      - "CollectReadCounts"
+      - "DenoiseReadCounts"
+      - "PlotDenoisedCopyRatios"
+      - "CallCopyRatioSegments"
+
+# RNA-seq Tools
+rna_tools:
+  salmon:
+    executable: "salmon"
+    version_flag: "--version"
+    min_version: "1.10.0"
+    install_cmd: "conda install -c bioconda salmon"
+    
+  kallisto:
+    executable: "kallisto"
+    version_flag: "version"
+    min_version: "0.48.0"
+    install_cmd: "conda install -c bioconda kallisto"
+    
+  stringtie:
+    executable: "stringtie"
+    version_flag: "--version"
+    min_version: "2.2.1"
+    install_cmd: "conda install -c bioconda stringtie"
+
+# Utility Tools
+utilities:
+  picard:
+    jar_path: "/opt/picard/picard.jar"
+    java_cmd: "java -jar"
+    min_version: "2.27.5"
+    install_cmd: "conda install -c bioconda picard"
+    
+  vcftools:
+    executable: "vcftools"
+    version_flag: "--version"
+    min_version: "0.1.16"
+    install_cmd: "conda install -c bioconda vcftools"
+    
+  bgzip:
+    executable: "bgzip"
+    version_flag: "--version"
+    min_version: "1.17"
+    install_cmd: "conda install -c bioconda htslib"
+    
+  tabix:
+    executable: "tabix"
+    version_flag: "--version"
+    min_version: "1.17"
+    install_cmd: "conda install -c bioconda htslib"
+
+# Container settings
+containers:
+  use_docker: false
+  use_singularity: false
+  docker_cmd: "docker"
+  singularity_cmd: "singularity"
+  auto_pull: true
+  cache_dir: "${HOME}/.genoscope/containers"
+
+# Java settings
+java:
+  executable: "java"
+  min_version: "11"
+  max_heap: "4G"
+  temp_dir: "/tmp"
+
+# Python settings
+python:
+  min_version: "3.9"
+  packages:
+    - "numpy>=1.21.0"
+    - "pandas>=1.3.0"
+    - "biopython>=1.79"
+    - "pysam>=0.19.0"
+    - "cyvcf2>=0.30.0"
+
+# Environment modules (for HPC)
+modules:
+  use_modules: false
+  module_cmd: "module"
+  auto_load: []
+
+# Validation settings
+validation:
+  check_on_startup: true
+  fail_on_missing: false
+  log_missing_tools: true
+  suggest_install: true
