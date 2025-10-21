@@ -14,16 +14,36 @@ Security features:
 - Docker containerization
 - Resource limiting
 - Path traversal prevention
+
+BioForge Integration:
+- MetagenomicsPipeline: Kraken2 → Assembly → GTDB-Tk
+- ProteinAnalysisPipeline: XtriMoPGLM protein prediction
+- MutationEffectPipeline: Enformer mutation effects
+- MetaGraphDataSource: Global sequence search
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
+    # Core components
     "BaseBioTool",
     "ToolConfig",
     "validate_file_path",
     "validate_sequence",
+    # BioForge pipelines
+    "MetagenomicsPipeline",
+    "ProteinAnalysisPipeline",
+    "MutationEffectPipeline",
+    "MetaGraphDataSource",
+    "PipelineResult",
 ]
 
 from .base_tool import BaseBioTool
 from .config import ToolConfig
 from .validators import validate_file_path, validate_sequence
+from .bioforge_integration import (
+    MetagenomicsPipeline,
+    ProteinAnalysisPipeline,
+    MutationEffectPipeline,
+    MetaGraphDataSource,
+    PipelineResult,
+)
