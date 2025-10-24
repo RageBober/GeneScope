@@ -1,11 +1,19 @@
 [tool.poetry]
 name = "genoscope"
-version = "0.1.0"
-description = "Toolkit for biological data analysis"
+version = "0.3.0"
+description = "High-performance toolkit for biological data analysis with integrated bioinformatics tools"
 authors = ["RageBober <dzumenov@gmail.com>"]
 readme = "README.md"
 
-packages = [{ include = "genoscope",  from = "src" }]
+# NOTE: Project uses flat layout (no src/ directory)
+# All code is in root-level modules: data_analysis/, mlmodel/, bioinformatics_tools/, performance/
+packages = [
+    { include = "data_analysis" },
+    { include = "mlmodel" },
+    { include = "bioinformatics_tools" },
+    { include = "performance" },
+    { include = "utils" },
+]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -25,9 +33,28 @@ gffutils = { version = "^0.13", optional = true }
 dask = "2025.2"
 matplotlib = "^3.9"
 seaborn = "^0.13"
+
+# Bioinformatics tools integration (optional)
+docker = { version = "^7.0", optional = true }
+redis = { version = "^5.0", optional = true }
+
+# High-performance computing (optional)
+ray = { version = "^2.9", optional = true }  # Distributed computing
+distributed = { version = "^2024.2", optional = true }  # Dask distributed
+cudf-cu11 = { version = "^24.2", optional = true }  # GPU DataFrames (NVIDIA only)
+cuml-cu11 = { version = "^24.2", optional = true }  # GPU ML (NVIDIA only)
+numba = { version = "^0.59", optional = true }  # JIT compilation
+psutil = "^5.9"  # System monitoring (always included)
+
 [tool.poetry.extras]
 io   = ["pysam", "h5py"]     # poetry install --extras "io"
 gff  = ["gffutils"]
+biotools = ["docker", "redis"]  # For bioinformatics tools integration
+
+# Performance extras
+performance = ["ray", "distributed", "numba", "redis"]  # CPU performance
+gpu = ["cudf-cu11", "cuml-cu11"]  # GPU acceleration (requires NVIDIA GPU)
+full = ["pysam", "h5py", "gffutils", "docker", "redis", "ray", "distributed", "numba"]  # Everything except GPU
 
 
 [tool.poetry.group.dev.dependencies]

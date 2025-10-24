@@ -1,0 +1,137 @@
+version: '3.8'
+
+# GeneScope Bioinformatics Tools Stack
+# Security-hardened Docker Compose configuration
+
+services:
+  # Kraken2 taxonomic classifier
+  kraken2:
+    build:
+      context: .
+      dockerfile: Dockerfile.kraken2
+    image: genoscope/kraken2:2.1.3
+    container_name: genoscope_kraken2
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    user: "1000:1000"
+    networks:
+      - genoscope_network
+    volumes:
+      - type: bind
+        source: ${KRAKEN2_DB_PATH:-/data/kraken2_db}
+        target: /db
+        read_only: true
+      - type: bind
+        source: ${INPUT_DIR:-./input}
+        target: /input
+        read_only: true
+      - type: bind
+        source: ${OUTPUT_DIR:-./output}
+        target: /output
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 64G
+        reservations:
+          cpus: '4'
+          memory: 32G
+
+  # MEGAHIT genome assembler
+  megahit:
+    build:
+      context: .
+      dockerfile: Dockerfile.megahit
+    image: genoscope/megahit:1.2.9
+    container_name: genoscope_megahit
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    user: "1000:1000"
+    networks:
+      - genoscope_network
+    volumes:
+      - type: bind
+        source: ${INPUT_DIR:-./input}
+        target: /input
+        read_only: true
+      - type: bind
+        source: ${OUTPUT_DIR:-./output}
+        target: /output
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 10G
+    deploy:
+      resources:
+        limits:
+          cpus: '16'
+          memory: 128G
+        reservations:
+          cpus: '8'
+          memory: 64G
+
+  # SPAdes genome assembler
+  spades:
+    image: staphb/spades:3.15.5
+    container_name: genoscope_spades
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    user: "1000:1000"
+    networks:
+      - genoscope_network
+    volumes:
+      - type: bind
+        source: ${INPUT_DIR:-./input}
+        target: /input
+        read_only: true
+      - type: bind
+        source: ${OUTPUT_DIR:-./output}
+        target: /output
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 10G
+    deploy:
+      resources:
+        limits:
+          cpus: '16'
+          memory: 128G
+
+  # GTDB-Tk bacterial classifier
+  gtdbtk:
+    image: ecogenomics/gtdbtk:2.3.2
+    container_name: genoscope_gtdbtk
+    security_opt:
+      - no-new-privileges:true
+    user: "1000:1000"
+    networks:
+      - genoscope_network
+    environment:
+      - GTDBTK_DATA_PATH=/db
+    volumes:
+      - type: bind
+        source: ${GTDBTK_DB_PATH:-/data/gtdbtk_db}
+        target: /db
+        read_only: true
+      - type: bind
+        source: ${INPUT_DIR:-./input}
+        target: /input
+        read_only: true
+      - type: bind
+        source: ${OUTPUT_DIR:-./output}
+        target: /output
+    deploy:
+      resources:
+        limits:
+          cpus: '16'
+          memory: 128G
+
+networks:
+  genoscope_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
