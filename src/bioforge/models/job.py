@@ -49,6 +49,7 @@ class Job(Base):
     
     # Results
     result_path: Mapped[str | None] = mapped_column(String(500))
+    result_data: Mapped[dict | None] = mapped_column(JSON)  # Structured results (stats, paths, etc.)
     error_message: Mapped[str | None] = mapped_column(Text)
     
     # Parameters and logs (JSON)
