@@ -4,7 +4,17 @@
       "Bash(git init:*)",
       "Bash(git remote add:*)",
       "Bash(git add:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(powershell -Command \"Get-Content ''C:\\Users\\dzume\\Документы\\BioForge_edit_branch\\auto_cleanup.ps1'' | powershell -Command { [System.Management.Automation.PSParser]::Tokenize($input, [ref]$null) | Out-Null; Write-Host ''Syntax OK'' }\")",
+      "Bash(powershell:*)",
+      "Bash(Remove-Item \"C:\\Users\\dzume\\Документы\\BioForge_edit_branch\\test_syntax.ps1\" -Force)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(python:*)",
+      "Bash(uv pip install:*)",
+      "Bash(alembic revision:*)",
+      "Bash(set:*)"
     ],
     "deny": [],
     "ask": []
